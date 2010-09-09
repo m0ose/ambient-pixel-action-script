@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import CamMapfilters.gradientRemove;
+			
+			import com.nodename.Delaunay.Triangle;
+			
+			import mx.charts.LineChart;
+			import mx.collections.ArrayCollection;
+			
+			import structuredlight.CameraProjecterMap2;
+			import structuredlight.MapFileOpener;
+			import structuredlight.ProjectorMap;
+			import structuredlight.Reversemap;
+			
+			var cam_map:CameraProjecterMap2;
+			var rev_map:Reversemap;
+			var fileO:MapFileOpener;
+			var proj_map:ProjectorMap;
+			
+			function load()
+			{
+				fileO = new MapFileOpener();
+				fileO.importMap()
+				fileO.addEventListener( "loaded Map", loaded)
+			}
+			function loaded(e:Event = null)
+			{
+				//rev_map = new Reversemap( fileO.cam_map)
+				cam_map = fileO.cam_map
+			}
+			
+			
+			function reverse()
+			{
+				rev_map = new Reversemap( cam_map) ;
+				rev_map.reverse();
+				
+				_img.source = new Bitmap( rev_map.display_rev_map() );
+			}
+			function showMap()
+			{
+				_img.source = new Bitmap( cam_map.makeGrayArrayImage() );
+			}
+			function interpolate()
+			{
+				proj_map = new ProjectorMap( cam_map);
+				proj_map.interpolate( _denoise.selected , _percentPoints.value );
+			}
+			function drawTriangles():BitmapData
+			{
+				var bm:BitmapData = rev_map.display_rev_map() ;
+				
+				var triad = proj_map.triad ;
+				
+				var s:Shape = new Shape();
+				s.graphics.lineStyle(1, 0xff0000 );
+				for each( var tr:Triangle in triad._triangles)
+				{
+					var p1:Point = tr.sites[0].coord ;
+					var p2:Point = tr.sites[1].coord ;
+					var p3:Point = tr.sites[2].coord ;	
+						
+					s.graphics.moveTo( p1.x, p1.y ) ;
+					s.graphics.lineTo( p2.x, p2.y ) ;
+					s.graphics.lineTo( p3.x, p3.y ) ;
+					s.graphics.lineTo( p1.x, p1.y ) ;
+				}
+				
+				bm.draw( s) ;
+				return bm
+			}
+			function displayTriangles()
+			{
+				_img.source = new Bitmap( drawTriangles() ) ;
+			}
+			
+			function analysis()
+			{
+				var meen_length:Number = 0;
+				var biggest:uint = 0;
+				var biggestP:Point 
+				var n:uint = 0;
+				for( var x:int = 0; x < rev_map.width(); x++ )
+				{
+					for( var y:int=0 ; y < rev_map.height(); y++ )
+					{
+						if(rev_map.rev_map[x][y])
+						{
+							if( rev_map.rev_map[x][y].length > 0)
+							{
+								if( rev_map.rev_map[x][y].length > biggest ){
+									biggest = rev_map.rev_map[x][y].length;
+									biggestP = new Point(x,y);	
+								}
+								meen_length += rev_map.rev_map[x][y].length ;					
+								n++ ;
+							}
+						}
+					}
+				}
+				meen_length = meen_length / n;
+				_log.text += "\n\n ____ CAMERA PIXELS PER PROJECTOR PIXEL _____" ;
+				_log.text += "\n meen list length: " + meen_length ;
+				_log.text += " \n biggest list length " + biggest + " at " + biggestP.toString();
+				
+				//find standard deviation of lengths
+				var sigma_length:Number = 0; //standard deviation
+				for( var x:int = 0; x < rev_map.width(); x++ )
+				{
+					for( var y:int=0 ; y < rev_map.height(); y++ )
+					{
+						if(rev_map.rev_map[x][y])
+						{
+							if( rev_map.rev_map[x][y].length > 0)
+							{
+								sigma_length += Math.pow( ( rev_map.rev_map[x][y].length - meen_length ) , 2);
+							}
+						}
+					}
+				}
+				sigma_length = Math.sqrt( (1/n) * sigma_length );
+				_log.text += " \n standard deviation of list lengths : " + sigma_length ;	
+				
+				// make graph
+				var histogram:Array = new Array( 100)
+				//var sigma_length:Number = 0; //standard deviation
+				for( var x:int = 0; x < rev_map.width(); x++ )
+				{
+					for( var y:int=0 ; y < rev_map.height(); y++ )
+					{
+						if( rev_map.rev_map[x][y].length < histogram.length && rev_map.rev_map[x][y].length > 0)
+						{
+							if( !histogram[ rev_map.rev_map[x][y].length ] )
+								histogram[ rev_map.rev_map[x][y].length] = new Number(0);
+							histogram[ rev_map.rev_map[x][y].length ] += 1 ; 
+						}
+					}
+				}
+		
+				//_img.width = stage.width;
+				//_img.height = stage.height;
+				linechart1.maxHeight = 200;
+				linechart1.dataProvider = histogram;
+				
+				// find average distance between pixels in reverse map lists
+				var distmeen:Number = 0;	
+				var nd:uint = 0
+				var distHist:Array = new Array(40);
+				for( var x:int = 0; x < rev_map.width(); x++ )
+				{
+					for( var y:int=0 ; y < rev_map.height(); y++ )
+					{
+						
+						var distances:Number = 0
+						if( rev_map.rev_map[x][y].length > 0)
+						{
+							var center:Point = new Point();
+							var lst:Array = rev_map.rev_map[x][y]
+							for( var i:int = 0; i < lst.length; i++)
+							{
+								center.x += lst[i].x
+								center.y += lst[i].y;
+							}
+							center.x = center.x / lst.length;
+							center.y = center.y / lst.length;
+							
+							
+							
+							for( var i:int = 0; i < lst.length; i++)
+							{
+								
+									var distance:Number = Math.sqrt( Math.pow((center.x - rev_map.rev_map[x][y][i].x),2) + Math.pow((center.y - rev_map.rev_map[x][y][i].y),2) );
+									if( distance < 100)	
+									{
+										distances += distance										
+									}
+									if( Math.round( distance)  < distHist.length )
+									{
+										if( !distHist[ Math.round( distance) ])
+											distHist[ Math.round( distance) ] = 0;
+										distHist[ Math.round( distance) ] += 1;
+									}
+								
+							}
+							nd++;
+							distances = distances / lst.length;
+							distmeen += distances;
+						}
+						
+					}
+					
+				}
+				linechart1.dataProvider = distHist;
+				distmeen = distmeen / nd;
+				_log.text += "\n   meen dist " + distmeen;
+			}
+			
+			
+			
+			
+			public function gradientDetect():BitmapData
+			{
+				var result1:BitmapData =  new BitmapData( cam_map._screen_width, cam_map._screen_height, false, 0xffffff)
+				
+				var prev:Point 
+				var curr:Point 
+				var global_dx:Number = 0 ;
+				var global_dy:Number = 0 ;
+				var n:uint = 0;
+				
+				//get global gradient
+				//  X
+				for( var y:int= 0; y< cam_map.height() ; y++)
+				{
+					curr = prev = null
+					for ( var x:int= 0; x< cam_map.width() ; x++)
+					{
+						if( cam_map.getMapXY( x,y).x >= 0)//good point
+						{
+							if( curr && curr.x > 0 )
+								prev = curr.clone();
+							curr = cam_map.getMapXY( x,y).clone();
+							if( prev && curr && prev.x > 0 && curr.x > 0)
+							{
+								var dx:Number = curr.x - prev.x;
+								if(dx > 0)
+								{
+									global_dx += +1;
+									n++
+								}
+								else if( dx < 1)
+								{
+									global_dx += -1;
+									n++;
+								}
+							}
+						}
+					}
+				}
+				// Y
+				for ( var x:int= 0; x < cam_map.width() ; x++)
+				{
+					curr = prev = null;
+					for( var y:int= 0; y < cam_map.height() ; y++)
+					{
+						if( cam_map.getMapXY( x, y).y >= 0)// -1 if bad point
+						{
+							if( curr && curr.x > 0)
+								prev = curr.clone();
+							curr = cam_map.getMapXY( x,y).clone();
+							if( prev && curr && curr.x > 0 && prev.x > 0)
+							{
+								var dy:Number = curr.y - prev.y;
+								if( dy > 0)
+								{
+									global_dy += 1;
+									n++
+								}
+								else if( dy < 1)
+								{
+									global_dy += -1;
+									n++;
+								}
+							}
+						}
+					}
+				}
+				//
+				// Mark these points
+				//
+				var prev:Point
+				var curr:Point
+				
+				for ( var x:int= 0; x < cam_map.width() ; x++)
+				{
+					prev = curr = null;
+					for( var y:int= 0; y < cam_map.height() ; y++)
+					{
+						
+						if( !prev || cam_map.getMapXY(prev.x , prev.y).x < 0)
+						{
+							prev = new Point(x,y)
+							curr = null;
+						}
+						else
+						{
+							curr = new Point(x,y);
+							if(  cam_map.getMapXY(curr.x , curr.y).x >= 0)
+							{
+								//result1.setPixel(x,y, 0xff0000);
+								var dy:Number = cam_map.getMapXY(curr.x , curr.y).y - cam_map.getMapXY(prev.x , prev.y).y;
+								var good:Boolean = true;
+								if( dy < 0 && global_dy > 0)
+									good = false;
+								if( dy > 0 && global_dy < 0)
+									good = false;
+								if( !good)
+								{
+									result1.setPixel( curr.x, curr.y, 0xff0000);
+									result1.setPixel( prev.x, prev.y, 0x00ff00);
+									prev = curr = null;
+								}
+								else
+								{
+									prev = curr.clone()
+								}
+							}
+						}
+					}
+				}
+				for( var y:int= 0; y < cam_map.height() ; y++)
+				{
+					prev = curr = null;
+					for ( var x:int= 0; x < cam_map.width() ; x++)
+					{
+						
+						if( !prev || cam_map.getMapXY(prev.x , prev.y).x < 0)
+						{
+							prev = new Point(x,y)
+							curr = null;
+						}
+						else
+						{
+							curr = new Point(x,y);
+							if(  cam_map.getMapXY(curr.x , curr.y).x >= 0)
+							{
+								//result1.setPixel(x,y, 0xff0000);
+								var dx:Number = cam_map.getMapXY(curr.x , curr.y).x - cam_map.getMapXY(prev.x , prev.y).x;
+								var good:Boolean = true;
+								if( dx < 0 && global_dx > 0)
+									good = false;
+								if( dx > 0 && global_dx < 0)
+									good = false;
+								if( !good)
+								{
+									result1.setPixel( curr.x, curr.y, 0x0000ff);
+									result1.setPixel( prev.x, prev.y, 0x00ffff);
+									prev = curr = null;
+								}
+								else{
+									prev = curr.clone();
+								}
+							}
+						}
+					}
+				}
+				
+				
+				_log.text += " global dx " + global_dx + " dy " + global_dy;
+				return result1
+			}
+			
+			
+			
+			
+			
+			
+			
+			function gradDetect()
+			{
+				if( cam_map)
+					_img.source = new Bitmap( gradientDetect())
+			}
+			function removeBadGrad()
+			{
+				var grad:gradientRemove = new gradientRemove();
+				cam_map = grad.removeBadGradient(cam_map);
+				_img.source = new Bitmap( grad.gradientDetect(cam_map) );
+					
+				
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<mx:Image x="-6" y="0" id="_img"/>
+	<mx:Form x="39" y="24" width="232" height="283" dropShadowVisible="false" contentBackgroundColor="#A7A3A3" contentBackgroundAlpha="1.0" backgroundColor="#585757" backgroundAlpha="0.5">
+		<s:Button label="load map" click="load()" />
+		<s:Button label="reverse map" click="reverse() "/>
+		<s:Button label="show map" click="showMap()" />
+		<s:Button label="remove bad gradient detect" click="removeBadGrad();//gradDetect()"/>
+		<mx:FormItem label="___INTERPOLATION___">
+		</mx:FormItem>
+		<mx:FormItem label="percent of points to keep:">
+		</mx:FormItem>
+		<s:HSlider minimum="0.0" maximum="1.0" id="_percentPoints" value="1.0" stepSize="0.01"/>
+		<s:CheckBox label="clean up noise" selected="false" id="_denoise"/>
+		<s:Button label="interpolate" click="interpolate() " enabled="true"/>
+		<s:Button label="show triangles" click="displayTriangles() "/>
+	</mx:Form>
+	<mx:Form x="39" y="303" width="425" height="287">
+		<mx:FormItem label="Label">
+			<s:Button label="analysis" click="analysis()"/>
+		</mx:FormItem>
+		<s:TextArea width="268" height="232" id="_log"/>
+	</mx:Form>
+	<mx:LineChart x="472" y="53" id="linechart1">
+		<mx:series>
+			<mx:LineSeries displayName="Series 1" yField=""/>
+		</mx:series>
+	</mx:LineChart>
+	<mx:Legend dataProvider="{linechart1}"/>
+</s:Application>

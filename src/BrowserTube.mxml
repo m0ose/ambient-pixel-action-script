@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			// !!! TODO :need to free up memory after interpolation
+			import com.nodename.*;
+			import com.nodename.Delaunay.Triangle;
+			import com.nodename.Delaunay.Voronoi;
+			
+			import flash.display.Loader;
+			import flash.display.Sprite;
+			import flash.display.StageScaleMode;
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.filters.DisplacementMapFilter;
+			import flash.net.URLRequest;
+			import flash.system.Security;
+			
+			import spark.components.VideoDisplay;
+			import spark.primitives.Rect;
+			
+			import structuredlight.CameraProjecterMap2;
+			import structuredlight.MapFileOpener;
+			import structuredlight.ProjectorMap;
+			import structuredlight.Reversemap;
+			
+			public var rev_map:Reversemap
+			public var cam_map:CameraProjecterMap2
+			public var inter_cam_map:ProjectorMap
+			
+			public var fileO:MapFileOpener = new MapFileOpener()
+			public var filt:DisplacementMapFilter = new DisplacementMapFilter()
+			
+			//FOR YOUTUBE
+			//USER VARIABLES for youtube
+			public var YOUTUBE_URL:String ="http://www.youtube.com/v/"
+			public var VID_URL:String = "l1u43KDiWD0&amp;hl=en_US&amp"//"2GA3a15xF0c&amp"
+			
+			// youtube member variables
+			private var player:Object = new Object()
+			private var loader:Loader = new Loader();
+			
+			function load()
+			{		
+				fileO.importMap()
+				fileO.addEventListener( "loaded Map", loaded)
+			}
+			function loaded(e:Event = null)
+			{
+				rev_map = new Reversemap( fileO.cam_map)
+				cam_map = fileO.cam_map
+			}
+			
+			
+			function export()
+			{
+				fileO.export( cam_map)
+			}
+			function interpolate()
+			{
+				if( !cam_map)
+				{
+					return 
+				}
+				inter_cam_map = new ProjectorMap( cam_map)	
+				inter_cam_map.interpolate()
+			}
+			
+			
+			
+			function denoise()
+			{
+				if( cam_map)
+				{
+					cam_map.deleteNoise()
+				}
+			}
+			function unattachVideo()
+			{
+				if( stage.getChildByName("_player") )
+				{
+					player.stopVideo();
+					player.visible = false;
+					player.destroy();
+					stage.removeChild( stage.getChildByName("_player") );
+				}
+				if( stage.getChildByName( "_dragbox") )
+				{
+					stage.removeChild( stage.getChildByName("_dragbox"))
+				}
+			}
+			
+			function showCamMap()
+			{
+				_img.source = new Bitmap( cam_map.makeGrayArrayImage() )
+			}
+			function show_inter_proj_map()
+			{
+				_img.source = new Bitmap( inter_cam_map.drawProj_map())
+			}
+			
+			function changeScaleSlider()
+			{
+				var newScale:int =scale_Slider.value
+				filt.scaleX = filt.scaleY = newScale
+				player.filters = [filt]
+			}
+			
+			
+			private var vidScale:Number = 1.0//global variable. represents scale for full screen
+			
+			function Zoom()
+			{
+				var newZoom:Number = 1 / _zoom.value
+				player.scaleX = player.scaleY = newZoom * vidScale
+				s.scaleX = s.scaleY = newZoom * vidScale
+			}
+			
+			public function goFullScreen( )
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIG)
+				stage.displayState = "fullScreen"
+			}
+			
+			function goBIG(e:FullScreenEvent = null)
+			{
+				
+				player.x = player.x - _img.x
+				player.y = player.y - _img.y
+				_img.x = _img.y = 0	
+				
+				//scale up the video	
+				vidScale = screen.width / player.width
+				//player.scaleX = player.scaleY = vidScale * ( 1 / _zoom.value )  
+				//s.scaleX = s.scaleY = vidScale * (1/ _zoom.value)
+				//	
+				//resize displacement map filter 
+				var bm:BitmapData = filt.mapBitmap;
+				var filtScale:Number =  screen.width / bm.width
+				
+				var mtrx:Matrix = new Matrix();
+				mtrx.scale( filtScale, filtScale);
+				
+				var bmScaled:BitmapData = new BitmapData( bm.width * filtScale, bm.height * filtScale,false)
+				bmScaled.draw( bm, mtrx)
+				
+				filt.mapBitmap = bmScaled
+				
+				//re-attach displacement filter
+				player.filters = [filt]
+				
+				//put scaled image on screen
+				_img.source = new Bitmap( bmScaled)
+				
+			}
+			
+			//
+			//   YOUTUBE RELATED FUNCTIONS
+			//
+			public function attachYouTube():void
+			{
+				
+				if( getChildByName( "_player") )
+				{
+					unattachVideo()
+				}
+				
+				Security.allowDomain("www.youtube.com");
+				stage.scaleMode = StageScaleMode.NO_SCALE;
+				loader.contentLoaderInfo.addEventListener(Event.INIT, onLoaderInit);
+				loader.load( new URLRequest( YOUTUBE_URL + VID_URL + "?version=3" ));
+			}
+			private function onLoaderInit(event:Event):void {
+				
+				//stage.addChild(loader)
+				loader.content.addEventListener("onReady", onPlayerReady);
+			}
+			
+			private function onPlayerReady(event:Event):void {
+				player = new Object()
+				player = loader.content;
+				player.setSize(480,385);
+				player.loadVideoById( VID_URL , 0, "small");
+				player.x = 200
+				
+				dragBox()
+				stage.addChild(loader).name="_player";
+			
+				makeDisplacementMap()
+			}
+			private function makeDisplacementMap():void
+			{
+				//
+				//displacement map
+				//
+				if( cam_map)
+				{
+					if( !filt)
+					{
+						filt = new DisplacementMapFilter( );
+					}
+					if(inter_cam_map)
+						filt.mapBitmap = inter_cam_map.drawProj_map()
+					else
+						filt.mapBitmap = cam_map.makeGrayArrayImage();
+					
+					filt.componentX = 1 //red
+					filt.componentY = 2  //green
+					filt.scaleX = filt.mapBitmap.width// /128
+					filt.scaleY= filt.mapBitmap.height// /128
+					
+					player.filters = [filt]
+					//player.scaleX = filt.mapBitmap.width / _vid.width
+					//player.scaleY = filt.mapBitmap.height / _vid.height
+					changeScaleSlider()
+				}
+			}
+			
+			var s:Sprite = new Sprite()	
+			private function dragBox()  //big blue box for dragging around
+			{
+				//dbug.text += "stuff called"
+				//Make the Blue drag BOX
+				s.graphics.lineStyle( 20, 0x0000ff)
+				s.graphics.beginFill( 0x0000ff, 0.7)
+				s.graphics.drawRect( 0 , 0, player.width , player.height )
+				
+				s.x = player.x
+				stage.addChild( s).name = "_dragbox"	
+				
+				s.addEventListener(MouseEvent.MOUSE_DOWN, dragStart)
+				s.addEventListener(MouseEvent.MOUSE_UP, dragStop)
+				
+			}
+			private function dragStart(e:MouseEvent = null)
+			{
+				//dbug.text += " player clicked"
+				s.startDrag()
+				
+				player.visible=false
+			}
+			private function dragStop( e:MouseEvent = null)
+			{
+				//s.useHandCursor = false
+				s.stopDrag()
+				player.x = s.x 
+				player.y = s.y
+				player.visible = true
+				
+				var p:Point = new Point(  -1*( player.x - _img.x), -1*( player.y - _img.y) )
+				filt.mapPoint = p
+				player.filters = [filt]	
+				
+				//dbug.text += "\n player.x " + player.x + " square.x " + s.x	
+			}
+			public function testpattern():void
+			{
+			 unattachVideo()
+			 VID_URL = "yMxHv4s67MY&amp"
+			 attachYouTube() 
+			
+			}
+			public function musicVid():void
+			{
+				unattachVideo()
+				VID_URL = "l1u43KDiWD0&amp"
+				attachYouTube()
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		
+	</fx:Declarations>
+	<mx:Image x="196" y="34" id="_img"/>
+	<mx:Image x="0" y="0" id="_testpatt" visible="false" source="testpattern.jpg"/>
+	<s:Button x="21" y="34" label="load" click="load()"/>
+	
+	
+	<s:Button x="21" y="132" label="interpolate" click="interpolate()"/>
+	<s:Button x="21" y="161" label="denoise()" click="denoise()"/>
+	<s:Button x="21" y="257" label="attach video" click="musicVid()"/>
+	
+	<s:Button x="21" y="286" label="un-attach video" click="unattachVideo()"/>
+	<s:HSlider x="52" y="334" stepSize="4" value="20" minimum="-600" maximum="3000" id="scale_Slider" change="changeScaleSlider()" width="600"/>
+	<s:HSlider x="56" y="372" id="_zoom" minimum="0.1" maximum="10" stepSize="0.2" value="1" width="163" change="Zoom()"/>
+	<s:Label x="21" y="315" text="displacementMapFilter  SCALE:" width="194"/>
+	<s:Label x="21" y="351" text="video SCALE:" width="86"/>
+	<s:Button x="25" y="391" label="FullScreen" click="goFullScreen()"/>
+	<s:Button x="19" y="186" label="show camera map" click="showCamMap()"/>
+	<s:Button x="19" y="215" label="projector map(interpolated)" click="show_inter_proj_map()"/>
+	<s:Button x="126" y="260" label="test pattern" click="testpattern()"/>
+	
+	
+</s:Application>

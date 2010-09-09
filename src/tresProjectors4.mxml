@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import ImageStuff.ImageStuff;
+			
+			import MultiProjector.multiProjector;
+			
+			import flash.display.*;
+			import flash.media.*;
+			
+			import mx.collections.ArrayCollection;
+			import mx.graphics.codec.PNGEncoder;
+			import mx.utils.ObjectUtil;
+			
+			import structuredlight.*;
+			
+			//for loading the camera
+			public var cam:Camera
+			//public var vid:Video
+			public var bmd:BitmapData
+			public var current_refresher:Timer 
+			
+			
+			private var fileO:MapFileOpener = new MapFileOpener()
+			public var camMap_stitched:CameraProjecterMap2;
+			
+			public var cam_resolutions:ArrayCollection = new ArrayCollection(
+				[ {label:"640 x 480", width:640, height:480}, 
+					{label:"320 x 240", width:320, height:240}, 
+					{label:"160 x 120", width:160, height:120} ]
+			)
+			
+			
+			public function load_camera(e:Event=null):void
+			{
+				cam = Camera.getCamera( camlist.selectedIndex.toString() )
+				
+				var wid:int = 320
+				var hei:int = 240
+				if(resolution_form){
+					wid = resolution_form.selectedItem.width
+					hei = resolution_form.selectedItem.height
+					cam.setMode( wid, hei, 60)
+					vidDisp.width = wid
+					vidDisp.height = hei
+				}
+				vidDisp.attachCamera( cam)
+			}
+			
+			//
+			// MULTIPROJECTOR
+			//
+			public var mp:multiProjector 
+			public function projectorsStart( numberOfProjectors,  timeout:int )
+			{
+				mp = new multiProjector( cam , stage );
+				mp.graycode_divider = Math.pow( 2, _coarsness.value);
+				mp._tone = _color.value * 0x010101;
+				mp.callib_3( _thresh_hold.value , numberOfProjectors , timeout );
+			}
+			
+			
+			
+			
+			
+			
+			
+			//
+			// testing related
+			//
+			public function showImage( n:int = 0)
+			{
+				if( n >= mp.projector_count)
+					return ;
+				
+				var sb:Sandbox3 = mp.sbList[n] ;
+				
+				_imgCallib.source = new Bitmap( sb.makeImage() );
+				
+			}
+			
+
+			//
+			// INTERPOLATION STUFF
+			//
+			
+			public function showInterp( n:int)
+			{
+				if( projMap_list && n < projMap_list.length)
+				{
+					var pm:ProjectorMap = projMap_list[ n];
+					
+					_img.source = new Bitmap( pm.drawProj_map()  );
+				}
+			}
+			
+			
+			var projMap_list:Array = new Array()
+			
+			public function interpallHandler():void
+			{
+				_log.text += " interpolating __" ;
+				//TODO destroy old proj maps
+				projMap_list = new Array()
+				interpolateAll();
+			}
+			public function interpolateAll():void
+			{
+				var n:int = projMap_list.length; 
+				if( n < mp.sbList.length && n >= 0)
+				{
+					var sb:Sandbox3 = mp.sbList[ n ];
+					var pm:ProjectorMap = new ProjectorMap( sb.graymap) ;
+					pm.interpolate( _pointsKept.value );
+					projMap_list[n] = pm; ;
+					_log.text += "\n interpolated : " + n; 
+					setTimeout( interpolateAll, 10);
+				}
+				else
+				{
+					_log.text += "\n done interpolating"
+				}
+				
+			}
+			
+			public function interpolate1( n:int):void
+			{
+				if( n < mp.sbList.length && n >= 0)
+				{
+					var sb:Sandbox3 = mp.sbList[ n ];
+					var pm:ProjectorMap = new ProjectorMap( sb.graymap) ;
+					pm.interpolate( _pointsKept.value );
+					projMap_list[n] = pm; ;
+					_log.text += "\n interpolated : " + n; 
+				}
+			}
+			
+			
+			
+			public function stitch():Displacement24
+			{
+				
+				var w:int = mp.sbList[0].graymap._screen_width;
+				var h:int = mp.sbList[0].graymap._screen_height;
+				
+				var resultX:BitmapData = new BitmapData( w , h, false, 0x7fffff );
+				var resultY:BitmapData = new BitmapData( w , h, false, 0x7fffff );
+				
+				var n_proj:int = mp.projector_count ;
+				
+				if( projMap_list.length > 1 )
+				{
+					for( var i:int = 0 ; i < projMap_list.length ; i++ )
+					{
+						var pm:ProjectorMap = projMap_list[ i];
+						var d24:Displacement24 = new Displacement24();
+						d24.fromProjectorMap( pm);
+						var bmX:BitmapData = d24.mapX;
+						var bmY:BitmapData = d24.mapY;
+						
+						var rect:Rectangle = new Rectangle( i*w /n_proj, 0, w / n_proj, h);
+						
+						var activeX:ByteArray = bmX.getPixels( rect);
+						var activeY:ByteArray = bmY.getPixels( rect);
+						activeX.position = 0;
+						activeY.position = 0;
+						resultX.setPixels( rect, activeX);
+						resultY.setPixels( rect, activeY);
+						// resultX.fillRect( rect, Math.random() * 0xffffff);
+						
+					}
+				}
+				var resultd24:Displacement24 = new Displacement24( resultX, resultY);
+				
+				_img.source = new Bitmap( resultX);
+				
+				return resultd24 ;
+			}
+			var d24:Displacement24
+			public function stitchAndDisplay():void
+			{
+				d24 = stitch();
+				_img2.source = new Bitmap( d24.quickBMP( stage.width, stage.height) );
+				d24.init();
+				
+				//vidDisp.filters = [d24.filter]
+				_img2.filters = [d24.filter];
+			}
+			
+			public function imageSave( n:String):void
+			{
+				var f2:FileReference = new FileReference();
+				
+				var encoder:PNGEncoder = new PNGEncoder()
+				
+				if( n=="x")
+				{
+					var bytesX:ByteArray = encoder.encode( d24.mapX);
+					
+					f2.save( bytesX, "xdisplacement.png" );
+				}
+				else if ( n=="y")
+				{
+					var bytesY:ByteArray = encoder.encode( d24.mapY);
+					
+					f2.save( bytesY, "ydisplacement.png" );
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<mx:Image x="0" y="0" id="_img"/>	
+	<s:TextArea x="713" y="25" width="283" id="_log" />
+	<mx:Image x="0" y="0" id="_img2"/>
+	<mx:TabNavigator x="30" y="10" width="676" height="564">
+		<s:NavigatorContent label="select camera" width="100%" height="100%">
+			<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
+			<mx:VideoDisplay width="320" height="240" 
+							 id="vidDisp" 
+							 visible="true"
+							 creationComplete="load_camera( event)"  x="14" y="40" contentBackgroundAlpha="1.0"/>
+			<mx:Text text="Choose a camera. there are {camlist.dataProvider.length} camera(s)"  x="14" y="14"/>
+			<mx:ComboBox id="camlist"
+						 dataProvider="{Camera.names}"
+						 width="200"	
+						 selectedIndex="1" 
+						 change="load_camera(event)"
+						 x="10" y="318"/>
+			<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="1" id="resolution_form" change="load_camera(event)" x="10" y="345"/>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="callibration" width="100%" height="100%">
+				<mx:Image x="0" y="0" id="_imgCallib"/>
+			<s:Button x="10" y="164" label="  projector callib" click="projectorsStart(_number_of_projectors.value, _timeout.value)"/>
+			<s:NumericStepper x="13" y="22" minimum="1" maximum="10" stepSize="1" id="_number_of_projectors" value="3"/>
+			<s:HSlider x="10" y="79" minimum="0" maximum="255" stepSize="1" value="14" id="_thresh_hold" />
+			<s:Label x="10" y="62" text="threshold" width="59" />
+			<s:HSlider x="10" y="134" id="_timeout" minimum="200" maximum="3000" stepSize="100" value="1000"/>
+			<s:Label x="10" y="114" text="time to change states"/>
+			<s:Label x="13" y="2" text="number of projectors"/>
+			<s:Button x="66" y="235" label="show Image" click="showImage( _sbImage_num.value)"/>
+			<s:NumericStepper x="10" y="235" id="_sbImage_num" minimum="0" maximum="10" stepSize="1"/>
+			<s:HSlider x="155" y="73" id="_color" minimum="0" maximum="255" value="128" stepSize="1"/>
+			<s:Label x="155" y="50" text="gray color"/>
+			<s:HSlider x="142" y="135" minimum="0" change="_coarsness_label.text=(Math.pow( 2,  _coarsness.value) ).toString()" id="_coarsness" maximum="10" stepSize="1" value="3"/>
+			<s:Label x="143" y="114" text="coarsness"/>
+			<s:Label x="207" y="113" text="8" id="_coarsness_label"/>
+		
+		</s:NavigatorContent>
+		<s:NavigatorContent label="interpolation" width="100%" height="100%">
+			<s:Label x="11" y="27" text="percent points to keep"/>
+			<s:HSlider x="11" y="44" id="_pointsKept" minimum="0.0" maximum="1.0" stepSize="0.05" value="0.8"/>
+			<s:Button x="13" y="60" label="interpolate All" click="interpallHandler()"/>
+			<s:Button x="10" y="107" label="stitch and display" click="stitchAndDisplay()"/>
+			<s:Label x="107" y="0" text="interpolate. then check to see if griid looks good"/>
+			<s:Label x="109" y="9" text="also remember. this is still in early developement. so it won't look perfect, yet. ;D" width="455"/>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="save displacement maps" width="100%" height="100%" backgroundAlpha="0.5">
+			<s:Button x="10" y="57" label="save X Displacement" click="imageSave('x') " />
+			<s:Button x="150" y="58" label="save Y Displacement" click="imageSave('y') "/>
+			<s:Label x="10" y="19" text="Save both of these images."/>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+
+</s:Application>
