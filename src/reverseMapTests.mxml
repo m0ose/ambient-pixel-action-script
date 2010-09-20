@@ -11,6 +11,7 @@
 			import CamMapfilters.gradientRemove;
 			
 			import com.nodename.Delaunay.Triangle;
+			import com.nodename.Delaunay.Voronoi;
 			
 			import mx.charts.LineChart;
 			import mx.collections.ArrayCollection;
@@ -35,6 +36,7 @@
 			{
 				//rev_map = new Reversemap( fileO.cam_map)
 				cam_map = fileO.cam_map
+				_log.text = " NEW Cam map loaded \n " + cam_map.dumpParameters();
 			}
 			
 			
@@ -147,8 +149,8 @@
 		
 				//_img.width = stage.width;
 				//_img.height = stage.height;
-				linechart1.maxHeight = 200;
-				linechart1.dataProvider = histogram;
+				//linechart1.maxHeight = 200;
+				//linechart1.dataProvider = histogram;
 				
 				// find average distance between pixels in reverse map lists
 				var distmeen:Number = 0;	
@@ -198,9 +200,12 @@
 					}
 					
 				}
+				
 				linechart1.dataProvider = distHist;
 				distmeen = distmeen / nd;
 				_log.text += "\n   meen dist " + distmeen;
+				
+				_log.text += "\n " + neighborAnalysis();
 			}
 			
 			
@@ -377,12 +382,228 @@
 					
 				
 			}
+			function logPoint(e:MouseEvent)
+			{
+				var x:int = e.localX;
+				var y:int = e.localY;
+			
+				var found:Boolean = false;
+				
+				for ( var x2:int =0 ; x2 < 10 ; x2++)
+				{
+					for ( var y2:int =0 ; y2 < 10 ; y2++)
+					{
+						if( x + x2 < rev_map.width() && y + y2< rev_map.height() && x > 0 && y > 0)
+						{
+							if( rev_map && x < rev_map[x+x2].length && rev_map[x+x2][y+y2] )
+							{
+									_log.text = "  rev map [x][y] " + rev_map.rev_map[x][y].toString() + "\n" + _log.text; 
+									found = true;	
+							}
+						}
+					}
+				}
+				if( ! found) 
+					_log.text += " nothing found at " +x + " ," +y;
+						
+				
+			}
+				
+			function reverseTriangles()
+			{    var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, 0x000000);
+				
+				if( proj_map)
+				{
+					
+					var triad = proj_map.triad ;
+					
+					var s:Shape = new Shape();
+					s.graphics.lineStyle(1, 0xff0000 );
+					for each( var tr:Triangle in triad._triangles)
+					{
+						var p1:Point = tr.sites[0].coord ;
+						var p2:Point = tr.sites[1].coord ;
+						var p3:Point = tr.sites[2].coord ;	
+						
+						
+						var q1:Point = proj_map.proj_map[ p1.x ] [ p1.y];
+						var q2:Point = proj_map.proj_map[ p2.x ] [ p2.y];
+						var q3:Point = proj_map.proj_map[ p3.x ] [ p3.y];
+
+						
+						s.graphics.moveTo( q1.x, q1.y ) ;
+						s.graphics.lineTo( q2.x, q2.y ) ;
+						s.graphics.lineTo( q3.x, q3.y ) ;
+						s.graphics.lineTo( q1.x, q1.y ) ;
+					}
+					
+					bm.draw( s) ;
+					//return bm
+				}
+				_img.source = new Bitmap(bm);
+			}
+			function neighborAnalysis():String
+			{
+				var avgDist:Number = 0;//average dist in projector map
+				var avgCamMapDist = 0;
+				var n:Number = 0;
+				var histogram:Array = new Array( 200);
+				var biggestDist:Number = 0;
+				for each( var p:Point in proj_map.mypoints)
+				{
+					var neighbors:Vector.<Point> = proj_map.triad.neighborSitesForSite(p);
+					var cmP:Point = proj_map.proj_map[ p.x][p.y];
+					for each( var nb:Point in neighbors)
+					{
+						var dist:Number = Math.sqrt(Math.pow((nb.x - p.x),2) + Math.pow( nb.y - p.y , 2)  );
+						var cmNB:Point = proj_map.proj_map[ nb.x ][ nb.y ];
+						var cmDist:Number = Math.sqrt(   Math.pow( cmNB.x - cmP.x , 2)   +   Math.pow( cmNB.y - cmP.y , 2)       );
+						n++;
+						avgDist += dist;
+						avgCamMapDist += cmDist;
+						//
+						//biggest distance
+						if( cmDist > biggestDist)
+							biggestDist = cmDist;
+						
+						//make histogram
+						//
+						var cmDRound = Math.round(cmDist);
+						if( cmDRound < histogram.length){
+							if( ! histogram[ cmDRound] ){
+								histogram[ cmDRound] = 0;}
+							else{
+								histogram[ cmDRound] += 1;
+							}
+						}
+
+						
+					}
+				}
+				
+				
+				avgDist = avgDist / n;
+				avgCamMapDist /= n;
+				
+				
+				//
+				//
+				// STANDARD DEVIATION
+				//get sigma
+				var sd:Number = 0;
+				for each( p in proj_map.mypoints)
+				{
+					neighbors= proj_map.triad.neighborSitesForSite(p);
+					cmP = proj_map.proj_map[ p.x][p.y];
+					for each( nb in neighbors)
+					{
+						cmNB = proj_map.proj_map[ nb.x ][ nb.y ];
+						cmDist = Math.sqrt(   Math.pow( cmNB.x - cmP.x , 2)   +   Math.pow( cmNB.y - cmP.y , 2)       );
+						sd += Math.pow(cmDist - avgCamMapDist, 2)/n; 
+					}
+				}
+				sd = Math.sqrt( sd );
+				
+				
+				linechart1.maxHeight = null;
+			    linechart1.dataProvider = histogram;
+				
+	
+				var log:String = "  average distance between neighbors in proj map " + avgDist;
+				log += "\n average cam map neighbor distance : " + avgCamMapDist;
+				log += "\n biggest cam map distance " + biggestDist;
+				log += "n="+n+"\n standard deviation of cam map distances " + sd;
+				return log;
+			}
+			
+			
+			function goodCamTriangles():Vector.<Point>
+			{
+				//remove 2 sigmas standard deviation  from the median distance from points in the cam map.
+				// note: this may not work with all maps.
+				
+				
+				var avgCamMapDist:Number = 0;
+				var n:Number = 0;
+				
+				for each( var p:Point in proj_map.mypoints)
+				{
+					var neighbors:Vector.<Point> = proj_map.triad.neighborSitesForSite(p);
+					var cmP:Point = proj_map.proj_map[ p.x][p.y];
+					for each( var nb:Point in neighbors)
+					{
+						var cmNB:Point = proj_map.proj_map[ nb.x ][ nb.y ];
+						var cmDist:Number = Math.sqrt(   Math.pow( cmNB.x - cmP.x , 2)   +   Math.pow( cmNB.y - cmP.y , 2)       );
+						n++;
+						avgCamMapDist += cmDist;
+						
+					}
+				}
+				
+				
+				avgCamMapDist /= n;
+				
+				
+				//
+				//
+				// STANDARD DEVIATION
+				//get sigma
+				var sd:Number = 0;
+				for each( p in proj_map.mypoints)
+				{
+					neighbors= proj_map.triad.neighborSitesForSite(p);
+					cmP = proj_map.proj_map[ p.x][p.y];
+					for each( nb in neighbors)
+					{
+						cmNB = proj_map.proj_map[ nb.x ][ nb.y ];
+						cmDist = Math.sqrt(   Math.pow( cmNB.x - cmP.x , 2)   +   Math.pow( cmNB.y - cmP.y , 2)       );
+						sd += Math.pow(cmDist - avgCamMapDist, 2)/n; 
+					}
+				}
+				sd = Math.sqrt( sd );
+				
+				var goodCoords:Vector.<Point> = new Vector.<Point>;
+				for each( p in proj_map.mypoints)
+				{
+					neighbors= proj_map.triad.neighborSitesForSite(p);
+					cmP = proj_map.proj_map[ p.x][p.y];
+					
+					var badCount:int = 0 ;
+					for each( nb in neighbors)
+					{
+						cmNB = proj_map.proj_map[ nb.x ][ nb.y ];
+						cmDist = Math.sqrt(   Math.pow( cmNB.x - cmP.x , 2)   +   Math.pow( cmNB.y - cmP.y , 2)       );
+						// if more than three distances are 
+						// i cmDist > meen + 2* standradDeviation /
+						if( cmDist > avgCamMapDist + sd  )
+							badCount += 1;
+						// mark for removal remove.
+					}
+					if( badCount < 3)
+					{
+						goodCoords.push( p)
+					}
+					
+					
+				}
+			
+				
+				return goodCoords;
+			}
+			function removeBadCoords():void
+			{
+				var good:Vector.<Point> = goodCamTriangles();
+				proj_map.triad = new Voronoi( good, null , new Rectangle(0,0, rev_map.width(), rev_map.height() ) )			;
+				proj_map.mypoints = good;
+				//proj_map.interpolate( _denoise.selected , _percentPoints.value );
+			}
+			
 		]]>
 	</fx:Script>
 	
 	
-	<mx:Image x="-6" y="0" id="_img"/>
-	<mx:Form x="39" y="24" width="232" height="283" dropShadowVisible="false" contentBackgroundColor="#A7A3A3" contentBackgroundAlpha="1.0" backgroundColor="#585757" backgroundAlpha="0.5">
+	<mx:Image x="-6" y="0" id="_img" click="logPoint( event)"/>
+	<mx:Form x="39" y="10" width="232" height="303" dropShadowVisible="false" contentBackgroundColor="#A7A3A3" contentBackgroundAlpha="1.0" backgroundColor="#585757" backgroundAlpha="0.5">
 		<s:Button label="load map" click="load()" />
 		<s:Button label="reverse map" click="reverse() "/>
 		<s:Button label="show map" click="showMap()" />
@@ -394,7 +615,9 @@
 		<s:HSlider minimum="0.0" maximum="1.0" id="_percentPoints" value="1.0" stepSize="0.01"/>
 		<s:CheckBox label="clean up noise" selected="false" id="_denoise"/>
 		<s:Button label="interpolate" click="interpolate() " enabled="true"/>
+		<s:Button label="try removing bad triangles" click= "removeBadCoords()"/>
 		<s:Button label="show triangles" click="displayTriangles() "/>
+		<s:Button label="show OtherTriangles" click = "reverseTriangles()"/>
 	</mx:Form>
 	<mx:Form x="39" y="303" width="425" height="287">
 		<mx:FormItem label="Label">

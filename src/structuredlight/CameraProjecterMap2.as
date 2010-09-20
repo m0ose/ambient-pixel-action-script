@@ -56,6 +56,20 @@ package structuredlight
 		public var _screen_width:int = 640;
 		public var _screen_height:int = 480;
 		
+		public function dumpParameters():String
+		{
+			var s1:String = new String();
+			s1 = " _threshold : " + _threshold + " \n";
+			s1 += "  _cam_width: " + _cam_width + " \n";
+			s1 += "  _cam_height: " + _cam_height + " \n";
+			s1 += "  _gray_width: " +  _gray_width+ " \n";
+			s1 += "  _gray_height: " + _gray_height + " \n";
+			s1 += "  _screen_width: " + _screen_width + " \n";
+			s1 += "  _screen_height: " + _screen_height + " \n";
+			return s1;
+			
+		}
+		
 		public function CameraProjecterMap():void
 		{			
 		}

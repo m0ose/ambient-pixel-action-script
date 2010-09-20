@@ -28,12 +28,13 @@
 			var rev_attached_refresher:Timer
 			
 			private var fileO:MapFileOpener = new MapFileOpener()
-			
+			private var scan_divisor:uint = 8;
 			
 			public var cam_resolutions:ArrayCollection = new ArrayCollection(
 				[ {label:"640 x 480", width:640, height:480}, 
 					{label:"320 x 240", width:320, height:240}, 
-					{label:"160 x 120", width:160, height:120} ]
+					{label:"160 x 120", width:160, height:120}
+					]
 			)
 			
 			
@@ -47,8 +48,8 @@
 					wid = resolution_form.selectedItem.width
 					hei = resolution_form.selectedItem.height
 					cam.setMode( wid, hei, 60)
-					vidDisp.width = wid
-					vidDisp.height = hei
+					vidDisp.width = cam.width;
+					vidDisp.height = cam.height
 				}
 				vidDisp.attachCamera( cam)
 			}
@@ -74,7 +75,7 @@
 			//structured light section
 			public function structuredLight_init(state_rate2:int = 300, TPtimeout2:int = 300 , thresh_hold:int = 30, tone:int = 128):void
 			{
-				sb= new Sandbox3( stage, cam, int(stage.width /8) , int(stage.height / 8 ));
+				sb= new Sandbox3( stage, cam, int(stage.width / scan_divisor) , int(stage.height / scan_divisor ));
 				sb.thresh_hold = thresh_hold ;
 				sb.white_tone = 0xff000000 + tone *  0x010101;
 				//this is nice but it leaves a "press esacape to exit" message on too long
@@ -87,6 +88,13 @@
 				
 				//init the mouse stuff
 				
+				
+			}
+			public function changeCoarsness():void
+			{
+				var coars = Math.pow(2 , _coarsness.value);
+				_corasness_label.text = coars;
+				scan_divisor = coars;
 				
 			}
 			public function showgraymap(e:Event=null):void
@@ -296,6 +304,9 @@
 			<s:Label x="12" y="76" text="Thresh-hold"/>
 			<s:HSlider x="19" y="176" id="_tone" minimum="0" maximum="255" stepSize="1" value="128"/>
 			<s:Label x="10" y="160" text="tone" width="138"/>
+			<s:HSlider x="171" y="177" id="_coarsness" minimum="0" maximum="10" stepSize="1" value="3" change="changeCoarsness()"/>
+			<s:Label x="166" y="158" text="coarsness"/>
+			<s:Label x="226" y="156" text="8" id="_corasness_label"/>
 			
 			
 			
