@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import flash.display.*;
+			import flash.media.*;
+			
+			import mx.collections.ArrayCollection;
+			import mx.utils.ObjectUtil;
+			
+			import structuredlight.*;
+			
+			//for loading the camera
+			public var cam:Camera
+			//public var vid:Video
+			public var bmd:BitmapData
+			public var current_refresher:Timer 
+			public var sb:Sandbox3
+			
+			//for attaching images to reverse map
+			public var rev_map:Reversemap
+			var rev_attached_refresher:Timer
+			
+			private var fileO:MapFileOpener = new MapFileOpener()
+			
+			
+			public var cam_resolutions:ArrayCollection = new ArrayCollection(
+				[ {label:"640 x 480", width:640, height:480}, 
+					{label:"320 x 240", width:320, height:240}, 
+					{label:"160 x 120", width:160, height:120} ]
+			)
+			
+			
+			public function load_camera(e:Event=null):void
+			{
+				cam = Camera.getCamera( camlist.selectedIndex.toString() )
+		
+				var wid:int = 320
+				var hei:int = 240
+				if(resolution_form){
+					wid = resolution_form.selectedItem.width
+					hei = resolution_form.selectedItem.height
+					cam.setMode( wid, hei, 60)
+					vidDisp.width = wid
+					vidDisp.height = hei
+				}
+				vidDisp.attachCamera( cam)
+			}
+			public function tryBMD():void
+			{
+				load_camera();
+				
+				current_refresher = new Timer( 1000/ cam.fps)
+				current_refresher.addEventListener(TimerEvent.TIMER, refresh_current_frame)
+				current_refresher.start()
+
+			}
+			public function refresh_current_frame(e:TimerEvent):void
+			{
+				if(cam)
+				{
+					bmd = new BitmapData( 2 * cam.width, 2 * cam.height, false, 0x00ff00)//cam.width,cam.height)		//bmd.draw( vidDisp)
+					bmd.draw( vidDisp)
+					//imgDisp.source = new Bitmap( bmd)	
+				}
+			}
+			
+			//structured light section
+			public function structuredLight_init(state_rate2:int = 300, TPtimeout2:int = 300):void
+			{
+				sb= new Sandbox3( stage, cam)
+					
+					//this is nice but it leaves a "press esacape to exit" message on too long
+				//stage.displayState = "fullScreen"
+
+				sb.state_rate = state_rate2
+				sb.TPTimeout = TPtimeout2
+				sb.callibrate()	
+				sb.addEventListener( "CALLIBRATE_DONE", showgraymap) //doesn't work
+					
+					//init the mouse stuff
+				
+									
+			}
+			public function showgraymap(e:Event=null):void
+			{
+				var gray_tmp:BitmapData = sb.graymap.makeGrayArrayImage()
+				structuredImage.source = new Bitmap( gray_tmp)
+			}
+			public function contours(e:Event=null):void
+			{
+				var some_bmd:BitmapData  = sb.graymap.contours(12) 
+				structuredImage.source = new Bitmap( some_bmd)
+			}
+			public function update_frame_store_contents(e:Event=null):void
+			{
+				//display the pictures that have been taken
+				FSC.maximum = sb.frames_store.length
+				if( FSC.value >0)
+				{
+					structuredImage.source = new Bitmap( sb.frames_store[ FSC.value + 1])
+				}
+			}
+
+			public function exportMap(e:Event = null)
+			{
+				sb.graymap.export()
+			}
+			public function importMap(e:Event=null):void
+			{
+				stop_refreshers()
+				sb = new Sandbox3(stage,cam)
+				sb.importMap()
+			}
+
+
+			protected function structuredImage_mouseDownHandler(e:MouseEvent):void
+			{
+			
+				mouse_area.text = " mouse local(X,Y) :("+e.localX+","+e.localY+")"
+				mouse_area.text += " \nprojected  ( " + sb.graymap.getMapXY(e.localX, e.localY) 
+				var dXp_dXc:Number = ( sb.graymap.getMapXY(e.localX +1, e.localY).x - sb.graymap.getMapXY(e.localX, e.localY).x)
+				var dYp_dXc:Number = ( sb.graymap.getMapXY(e.localX + 1, e.localY).y - sb.graymap.getMapXY(e.localX, e.localY).y)
+				var dXp_dYc:Number = ( sb.graymap.getMapXY(e.localX , e.localY + 1).x - sb.graymap.getMapXY(e.localX, e.localY).x)
+				var dYp_dYc:Number = ( sb.graymap.getMapXY(e.localX , e.localY + 1).y - sb.graymap.getMapXY(e.localX, e.localY).y)
+				mouse_area.text += "\n dXp/dXc : " + dXp_dXc+" dYp/dXc : "+dYp_dXc+"\n dXp/dYc :"+dXp_dYc+" dYp/dYc :"+dYp_dYc
+			}
+			public function edges():void
+			{
+				if(sb){
+					structuredImage.source = new Bitmap( sb.graymap.denoise2(16)) 	
+				}
+			}
+			public function blur():void
+			{
+				if(sb)
+				{
+					sb.graymap = sb.graymap.gaussianBlur()
+				}
+			}
+//
+//
+			
+			//
+			//
+			//
+			//below is for the reverse map section
+			//
+			
+			
+			//
+			//atttach the pictures
+			public function stop_refreshers()
+			{
+				if( rev_attached_refresher){
+					if( rev_attached_refresher.running)
+					{	rev_attached_refresher.stop()}
+				}
+			}
+			public function reverse():void
+			{
+				
+				rev_map = new Reversemap( sb.graymap)
+				//rev_map.reverse()
+				structuredImage.source = new Bitmap( rev_map.display_rev_map())
+				mouse_area.text += "\reverse(() called"
+			}
+			
+			
+			public function attachCameraToMap():void
+			{
+				reverse()
+				load_camera();
+				
+				rev_attached_refresher = new Timer( 1000/ cam.fps)
+				rev_attached_refresher.addEventListener(TimerEvent.TIMER, refresh_current_rev_frame)
+				rev_attached_refresher.start()
+				
+			}
+			public function refresh_current_rev_frame(e:TimerEvent):void
+			{
+				if(!bmd)
+				{
+					bmd = new BitmapData(cam.width, cam.height, false, 0x00ff00)
+				}
+				if(cam)
+				{
+					//bmd = new BitmapData(cam.width, cam.height, false, 0x00ff00)//cam.width,cam.height)		//bmd.draw( vidDisp)
+					bmd.draw( vidDisp)
+					structuredImage.source = new Bitmap( rev_map.attachImage( bmd))
+				}
+				
+			}
+			public function goFullScreen( )
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIGhandler)
+				stage.displayState = "fullScreen"
+				
+			}
+			
+			private function goBIGhandler(e:FullScreenEvent)
+			{
+				
+				if(structuredImage.content)
+				{
+					if(e.fullScreen)
+					{
+						structuredImage.scaleX = stage.width / structuredImage.content.width
+						structuredImage.scaleY = stage.height / structuredImage.content.height
+						structuredImage.x = 0
+						structuredImage.y = 0
+						
+						/*var BIGImage:DisplayObject = structuredImage.content
+						BIGImage.scaleX = stage.width / BIGImage.width
+						BIGImage.scaleY = stage.height / BIGImage.height
+						this.stage.addChild( BIGImage).name = "BIG ole Image"		
+						*/
+						}
+					else //not fullscreen anymore
+					{
+						//stage.removeChild( stage.getChildByName("BIG ole Image") )
+						structuredImage.scaleX = 1
+						structuredImage.scaleY = 1
+						structuredImage.x = 860//hard coded. not good
+					}
+					
+				}
+			}
+		
+			
+			
+		
+
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<mx:Accordion x="7.7" y="48.35" width="861" height="552">
+		<s:NavigatorContent label="video" width="100%" height="100%">
+			<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
+			<mx:VideoDisplay width="320" height="240" 
+							 id="vidDisp" 
+							 visible="true"
+							 creationComplete="load_camera( event)"  x="10" y="37"/>
+			<mx:Text text="Choose a camera. there are {camlist.dataProvider.length} camera(s)"  x="14" y="14"/>
+			<mx:Form x="383" y="23" width="310" height="208">
+			
+			<mx:ComboBox id="camlist"
+						 dataProvider="{Camera.names}"
+						 width="200"	
+						 selectedIndex="1" 
+						 change="load_camera(event)"
+			 x="408" y="39"/>
+			<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="1" id="resolution_form" x="408" y="65"  change="load_camera(event)"/>
+			</mx:Form>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="current bitmap test" width="100%" height="100%">
+			<mx:Image x="6.3" y="11.65"  id="imgDisp"/>
+			<s:Button x="113" y="56" label="try bitmap" click="tryBMD()"/>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="structured light" width="100%" height="100%">
+			<s:Button x="10" y="10" label="callibrate" click="structuredLight_init(state_rate.value, TPtimeout.value)"/>
+			<s:Button x="10" y="248" label="show map" click="showgraymap()"/>
+			<mx:Text text=" timout for the state change" x="8" y="71">
+			</mx:Text>
+			<mx:HSlider maximum="4000" minimum="0" id="state_rate" value="300" x="12" y="91" tickInterval="20" snapInterval="20.0"/>
+			<mx:Text text=" take picture timout"  x="12" y="120"/>
+			<mx:HSlider maximum="4000" minimum="0" id="TPtimeout"  value="300" x="10" y="143" tickInterval="20" snapInterval="20.0"/>
+			
+			<mx:Text text="photos taken " x="14" y="178" width="156"/> 
+			<s:Button x="10" y="277" label="show contours" click="contours()"/>
+			<s:NumericStepper x="12" y="196" maximum="0" focusIn="update_frame_store_contents()" id="FSC" change="update_frame_store_contents()"/>
+			<s:Button x="96" y="48" label="export map" id="load_files" click="exportMap()"/>
+			<s:TextArea x="10" y="419" width="237" id="mouse_area" height="121" />
+			<s:Button x="10" y="48" label="import map" click="importMap()"/>
+			<s:Button x="10" y="306" label="show edges" click="edges()"/>
+			<s:Button x="10" y="335" label="make reverse lookup map" click="reverse()"/>
+			<s:Button x="10" y="363" label="attach camera to map" click="attachCameraToMap()"/>
+			<s:Button x="160" y="364" label="unattach" click="stop_refreshers()"/>
+			<s:Button x="107" y="306" label="Blur" click="blur()"/>
+			<s:Button x="10" y="389" label="fullscreen" click="goFullScreen()"/>
+			
+			
+			
+			
+		</s:NavigatorContent>
+		<s:NavigatorContent label="debug window" width="100%" height="100%">
+			<s:TextArea x="6.3" y="10.65" width="464" height="304" id="dBug" text="NOTE: this doesn't work untill it has been seen by the user. \n
+						it is wierd, but the debug window doesn't work untill it has been displayed."/>
+		</s:NavigatorContent>
+		<s:NavigatorContent>
+			
+		</s:NavigatorContent>
+	</mx:Accordion>
+	<mx:Image x="876.7" y="120.35" id="structuredImage" mouseDown="structuredImage_mouseDownHandler(event)"/>
+</s:Application>
