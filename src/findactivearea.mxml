@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import ImageStuff.noMotionDetector;
+			
+			import mx.collections.ArrayCollection;
+			import mx.utils.ObjectUtil;
+			
+			import structuredlight.*;
+			
+			//for loading the camera
+			public var cam:Camera
+			public var vid:Video
+			
+			public var bmd:BitmapData
+			public var current_refresher:Timer 
+			public var sb:Sandbox3
+			public var filts:Array = [] ;
+			var proj_map:ProjectorMap;
+			
+			public var coarsness:int = 1;
+			
+			public var cam_resolutions:ArrayCollection = new ArrayCollection(
+				[ {label:"640 x 480", width:640, height:480}, 
+					{label:"320 x 240", width:320, height:240}, 
+					{label:"160 x 120", width:160, height:120} ]
+			)
+			
+			
+			public function load_camera(e:Event=null):void
+			{
+				cam = Camera.getCamera( camlist.selectedIndex.toString() )
+				
+				var wid:int = 320
+				var hei:int = 240
+				if(resolution_form){
+					wid = resolution_form.selectedItem.width
+					hei = resolution_form.selectedItem.height
+					cam.setMode( wid, hei, 60)
+					vidDisp.width = wid
+					vidDisp.height = hei
+				}
+				vidDisp.attachCamera( cam)
+			}
+			
+	
+			
+			//
+			//
+			//
+			//
+			//
+			//
+			public function findActive()
+			{
+				threshold_1 = 0x010101 * _thresh_hold.value + 0xff000000 ;
+				//get whitw image 
+				// get dark image
+				// compare with a threshhold
+				//  possibly find thresholf by comparing the gain in the non-active areas. wait that doesn't make sense
+				takePicBase();
+			}
+
+			var timeout:int = 300;//count between frame checks
+			var threshold_1:uint = 0xff444444  ;
+			var max_timeout:int = 3000; // 3000 ms == 3 seconds 
+			var t:Timer
+			var prev:BitmapData ; 
+			var curr:BitmapData ;
+			
+			//var e_done:Event = new Event("pic took");
+			
+			
+			public function takePicBase()
+			{
+				
+				prev = new BitmapData( cam.width, cam.height, false, 0xffffff );	
+				
+				curr = new BitmapData( cam.width, cam.height, false, 0xffffff );
+				
+					
+				prev.draw( vidDisp ); //draw the current frame in the camera 
+				
+				t=new Timer( timeout );
+				t.addEventListener(TimerEvent.TIMER, takePic);
+				//t.addEventListener(TimerEvent.TIMER_COMPLETE , compare);
+				
+				t.start();
+			}
+			public function takePic(e:TimerEvent)
+			{
+				curr.draw( vidDisp );
+				
+				//comapare
+				//   make differences white
+				var difference:BitmapData = prev.clone();
+				difference.draw( curr , new Matrix() , new ColorTransform(), BlendMode.DIFFERENCE); 
+				//difference.threshold( difference, difference.rect, new Point(0,0), "<=" , threshold_1, 0xff000000);
+				difference.threshold( difference, difference.rect, new Point(0,0), ">" , threshold_1, 0xffffffff);
+				
+				
+				var pixCount:Number = countPixels( difference);
+				if( t.currentCount > max_timeout / timeout )
+				{
+					compare();	
+				}
+				else if( pixCount >= 0 && pixCount < 100 )
+				{
+					//t.stop();
+				 	compare();
+				}
+				else
+				{
+					var rect:Rectangle = difference.getColorBoundsRect( 0xffffff, 0xffffff);
+					var s:Shape = new Shape();
+					s.graphics.lineStyle( 6, 0x0000ff);
+					s.graphics.drawRect( rect.x , rect.y, rect.width, rect.height);
+					difference.draw( s);
+					_img.source = new Bitmap( difference );
+					
+					prev = curr.clone();
+				}
+				
+			}
+			public function compare(e:TimerEvent = null)
+			{
+				t.stop();
+				curr.draw( vidDisp );
+				_img.source = new Bitmap( curr) ;
+			}
+			//
+			//
+			public function countPixels(b:BitmapData):Number // count the white pixels
+			{
+				var total:int = 0;
+				var total_with_any_change:int = 0;
+				for( var x:int = 0 ; x< b.width ; x = x + 1)
+				{
+					for( var y:int = 0 ; y < b.height; y = y + 1)
+					{
+						var pix:uint = b.getPixel( x, y); 
+						if( pix == 0xffffff )
+						{
+							total ++;
+						}
+						if( pix != 0x000000)
+						{
+							total_with_any_change ++ ;
+						}
+					}
+				}
+				if( total_with_any_change == 0)// NO CHANGE AT ALL, PROBABLY THE SAME FRAME.
+				{
+					return -1;
+				}
+				return total;
+			}
+			
+			
+			var noMot:noMotionDetector ;
+			public function noMotion()
+			{
+				var bl:BitmapData = new BitmapData( stage.width, stage.height, false, 0x000000 );
+				var bla:Bitmap = new Bitmap( bl);
+				stage.addChild( bla).name="blac" ;
+				
+				noMot = new noMotionDetector(cam, 200, _thresh_hold.value * 0x010101 + 0xff000000);
+				noMot.addEventListener( noMot.Event_donePic_Ready, displayPic1);
+				noMot.start();
+				
+			}
+			public function noMotion2()
+			{
+				var wh:BitmapData = new BitmapData( stage.width, stage.height, false, 0xffffff );
+				var whi:Bitmap = new Bitmap( wh);
+				stage.addChild( whi).name="whit" ;
+				
+				noMot = new noMotionDetector(cam,200, _thresh_hold.value * 0x010101 + 0xff000000);
+				noMot.addEventListener( noMot.Event_donePic_Ready, displayPic2);
+				noMot.start();
+				
+			}
+			public function displayPic1(e:Event )
+			{
+				stage.removeChild( stage.getChildByName("blac") ) ;
+				_img.source = new Bitmap( noMot.donePic	) ;
+				noMotion2();
+			}
+			public function displayPic2(e:Event )
+			{
+				stage.removeChild( stage.getChildByName("whit") ) ;
+				_img2.source = new Bitmap( noMot.donePic	)
+			}
+		]]>
+	</fx:Script>
+	
+	
+	
+	<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
+	<mx:VideoDisplay width="320" height="240" 
+					 id="vidDisp" 
+					 visible="true"
+					 creationComplete="load_camera( event)"  x="10" y="37"/>
+	<mx:Text text="Choose a camera. there are {camlist.dataProvider.length} camera(s)"  x="14" y="14"/>
+	<mx:ComboBox id="camlist"
+				 dataProvider="{Camera.names}"
+				 width="200"	
+				 selectedIndex="1" 
+				 change="load_camera(event)"
+				 x="10" y="318"/>
+	<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="1" id="resolution_form" change="load_camera(event)" x="10" y="341"/>
+
+	<s:Label x="107" y="97" text="percentage of points to keep"/>
+	<mx:Form x="15" y="372" width="265" height="218">
+		<s:Label text="thersh hold" width="83"/>
+		<s:HSlider minimum="0" maximum="256" stepSize="1" value="40" id="_thresh_hold"/>
+		<s:Button label="find active area" click="findActive() ;"/>
+		<mx:FormItem label="test">
+			<s:Button label="no motion detect" click="noMotion()"/>
+		</mx:FormItem>
+	</mx:Form>
+	<mx:Image x="367" y="35" id="_img"/>
+	<mx:Image x="679" y="35" id="_img2"/>
+
+	
+</s:Application>

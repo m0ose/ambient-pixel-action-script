@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import ImageStuff.ImageStuff;
+			
+			import MultiProjector.multiProjector;
+			
+			import flash.display.*;
+			import flash.media.*;
+			
+			import mx.collections.ArrayCollection;
+			import mx.utils.ObjectUtil;
+			
+			import structuredlight.*;
+			
+			//for loading the camera
+			public var cam:Camera
+			//public var vid:Video
+			public var bmd:BitmapData
+			public var current_refresher:Timer 
+			
+			
+			private var fileO:MapFileOpener = new MapFileOpener()
+			public var camMap_stitched:CameraProjecterMap2;
+			
+			public var cam_resolutions:ArrayCollection = new ArrayCollection(
+				[ {label:"640 x 480", width:640, height:480}, 
+					{label:"320 x 240", width:320, height:240}, 
+					{label:"160 x 120", width:160, height:120} ]
+			)
+			
+			
+			public function load_camera(e:Event=null):void
+			{
+				cam = Camera.getCamera( camlist.selectedIndex.toString() )
+				
+				var wid:int = 320
+				var hei:int = 240
+				if(resolution_form){
+					wid = resolution_form.selectedItem.width
+					hei = resolution_form.selectedItem.height
+					cam.setMode( wid, hei, 60)
+					vidDisp.width = wid
+					vidDisp.height = hei
+				}
+				vidDisp.attachCamera( cam)
+			}
+
+
+			//
+			// MULTIPROJECTOR
+			//
+			public var mp:multiProjector 
+			public function projectorsStart( numberOfProjectors,  timeout:int )
+			{
+				mp = new multiProjector( cam , stage );
+				mp.callib_3( numberOfProjectors , timeout );
+			}
+			
+			
+			
+			
+			
+			
+			
+			//
+			// testing related
+			//
+			public function showImage( n:int = 0)
+			{
+				if( n >= mp.projector_count)
+					return ;
+				
+				var sb:Sandbox3 = mp.sbList[n] ;
+				
+				_img.source = new Bitmap( sb.makeImage() );
+				
+			}
+
+
+			public function showMask( n:int )
+			{
+				_img.source = new Bitmap(  mp.differences( mp.sbList[n] , 0xff000000 + 0x010101 * _thresh_hold.value ) );
+			}
+
+			
+		]]>
+	</fx:Script>
+	
+	<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
+	<mx:VideoDisplay width="320" height="240" 
+					 id="vidDisp" 
+					 visible="true"
+					 creationComplete="load_camera( event)"  x="10" y="37"/>
+	<mx:Text text="Choose a camera. there are {camlist.dataProvider.length} camera(s)"  x="14" y="14"/>
+	<s:Button x="66" y="407" label="  projector callib" click="projectorsStart(_number_of_projectors.value, 400)"/>
+	
+	<s:NumericStepper x="10" y="408" minimum="1" maximum="10" stepSize="1" id="_number_of_projectors" value="3"/>
+	<s:TextArea x="304" y="443" width="283" id="_log" />
+	
+	<s:NumericStepper x="98" y="437" id="_sbImage_num" minimum="0" maximum="10" stepSize="1"/>
+	<s:Button x="10" y="439" label="show Image" click="showImage( _sbImage_num.value)"/>
+
+	
+	<s:HSlider x="89" y="510" minimum="0" maximum="255" stepSize="1" value="88" id="_thresh_hold" change="_thresh_label.text = ( 0xff000000 + _thresh_hold.value * 0x010101).toString( 16)  "/>
+	<s:Label x="92" y="496" text="threshold" width="59" />
+	<s:Label x="159" y="496" id="_thresh_label"/>
+	<s:Button x="159" y="439" label="show Mask" click="showMask( _sbImage_num.value )"/>
+	<mx:ComboBox id="camlist"
+				 dataProvider="{Camera.names}"
+				 width="200"	
+				 selectedIndex="1" 
+				 change="load_camera(event)"
+	 x="10" y="318"/>
+	<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="1" id="resolution_form" change="load_camera(event)" x="10" y="341"/>
+	<mx:Image x="422" y="37" id="_img"/>
+	
+</s:Application>
