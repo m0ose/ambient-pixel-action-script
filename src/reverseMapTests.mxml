@@ -421,7 +421,7 @@
 				
 			}
 				
-			function reverseTriangles()
+			/*function reverseTriangles()
 			{    var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, 0x000000);
 				
 				if( proj_map)
@@ -453,6 +453,52 @@
 					//return bm
 				}
 				_img.source = new Bitmap(bm);
+			}
+			*/
+			function reverseTriangles()
+			{
+			    var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, 0x000000);
+
+				if( proj_map)
+				{
+					var s:Shape = new Shape();
+					s.graphics.lineStyle(1, 0xffffff );
+					
+					
+					var camTriads = proj_map.getCameraTriangles();
+					for each( var tr:Array in camTriads)
+					{
+						s.graphics.moveTo( tr[0].x ,tr[0].y);
+						s.graphics.lineTo( tr[1].x, tr[1].y);
+						s.graphics.lineTo( tr[2].x, tr[2].y);
+						s.graphics.lineTo( tr[0].x, tr[0].y);
+
+							
+					}
+					bm.draw( s);
+				}
+				_img.source = new Bitmap( bm);
+			}
+			function tryUVMapping()
+			{
+				var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, 0x000000);
+				
+				if( proj_map)
+				{
+					
+					
+					var camTriads = proj_map.getCameraTriangles();
+					
+					
+					var vertices:Vector.<Number> = new Vector.<Number>;
+					for each( var tr:Array in camTriads)
+					{
+						//var vertices:Vector.<Number>.push( [tr[0].x , tr[0].y, tr[1].x, tr[1].y, tr[2].x ,tr[2].y] )
+						
+					//s.graphics.drawTriangles(	
+					}
+				}
+				_img.source = new Bitmap( bm);
 			}
 			function neighborAnalysis():String
 			{
@@ -716,10 +762,14 @@
 				}
 				//proj_map.proj_map = tmpProjMap;
 			}
-			
+			public function fillInChanges():void			
+			{
+				proj_map.triangulation();
+				proj_map.fillIn();	
+			}
 			public function saveX():void
 			{
-				
+				fillInChanges();
 				var f:FileReference = new FileReference();
 				var d24:Displacement24 = new Displacement24();
 				d24.fromProjectorMap( proj_map );
@@ -737,7 +787,7 @@
 			
 			public function saveY():void
 			{
-				
+				fillInChanges()
 				//_log.text += " saving y map" ;
 				
 				var d24:Displacement24 = new Displacement24();
@@ -757,7 +807,7 @@
 	
 	
 	<mx:Image x="-6" y="0" id="_img" click="logPoint( event)"/>
-	<mx:Form x="10" y="16" width="232" height="399" dropShadowVisible="false" contentBackgroundColor="#A7A3A3" contentBackgroundAlpha="1.0" backgroundColor="#585757" backgroundAlpha="0.5">
+	<mx:Form x="10" y="40" width="232" height="399" dropShadowVisible="false" contentBackgroundColor="#A7A3A3" contentBackgroundAlpha="1.0" backgroundColor="#585757" backgroundAlpha="0.5">
 		<s:Button label="load map" click="load()" />
 		<s:Button label="reverse map" click="reverse() "/>
 		<s:Button label="show map" click="showMap()" />
@@ -773,6 +823,7 @@
 		<s:Button label="show triangles" click="displayTriangles() "/>
 		<s:Button label="show OtherTriangles" click = "reverseTriangles()"/>
 		<s:Button label="jiggle" click="jiggle()"/>
+		<s:Button label="make Image Changes( fillIn )" click="fillInChanges()"/>
 		<s:Button label="save X map" click="saveX()"/>
 		<s:Button label="save Y map" click="saveY()"/>
 	</mx:Form>

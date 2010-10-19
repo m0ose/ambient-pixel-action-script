@@ -347,44 +347,37 @@ package structuredlight
 		
 		
 		
-	
-	/*
-		//
-		//
-		// PROJECT AN IMAGE ONTO THE MAP
-		//		these are used for projection of an image onto a map
-		//		NOTE. NOT REALLY USED SINCE DISPLACEMENT24 DOES THIS FASTER.
-		public function putImageOnInter_cam_map(img:BitmapData, wid:int=640, hei:int=480):BitmapData
-		{
-			var result:BitmapData = new BitmapData( cam_map_interpolated.length, cam_map_interpolated[0].length, false, 0x009900)
-
-				//
-			//scaled image
-			var scaled:BitmapData = new BitmapData( wid, hei)//width()/ img.width, height()/img.height)
-			var mtrx:Matrix = new Matrix( cam_map_interpolated.length / img.width, 0,0, cam_map_interpolated[0].length / img.height )
-			scaled.draw( img,mtrx)
-			//return scaled
+		public function getCameraTriangles():Vector.<Array>
+		{ 
+			var result:Vector.<Array> = new Vector.<Array>;
 			
-			for( var x:int=0; x< cam_map_interpolated.length;x++) 
+			if( proj_map && triad && triad._triangles.length > 0)
 			{
-				for( var y:int=0; y< cam_map_interpolated[0].length; y++)
+				
+				//var triad = proj_map.triad ;
+				
+				//var s:Shape = new Shape();
+				//s.graphics.lineStyle(1, 0xff0000 );
+				for each( var tr:Triangle in triad._triangles)
 				{
-					if( cam_map_interpolated[x][y])
-					{
-						for( var z:int=0; z < cam_map_interpolated[x][y].length;z++)
-						{
-							var p:Point = cam_map_interpolated[x][y][z]
-							var pixel:uint = scaled.getPixel( x,y)
-							result.setPixel( p.x,p.y, pixel)
-						}
-					}
+					var p1:Point = tr.sites[0].coord ;
+					var p2:Point = tr.sites[1].coord ;
+					var p3:Point = tr.sites[2].coord ;	
+					
+					
+					var q1:Point = proj_map[ p1.x ] [ p1.y];
+					var q2:Point = proj_map[ p2.x ] [ p2.y];
+					var q3:Point = proj_map[ p3.x ] [ p3.y];
+					
+					
+					
+					result.push( [q1, q2, q3] );
 				}
 			}
-			return result
-			
+			return result;
 		}
 		
-		*/
+		
 		public function putImageOnCam_map( img:BitmapData, wid:int = 640, hei:int = 480):BitmapData
 		{
 

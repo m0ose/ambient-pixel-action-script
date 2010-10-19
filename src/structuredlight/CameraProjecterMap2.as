@@ -105,6 +105,18 @@ package structuredlight
 		{
 			var scale_X:int = _screen_width / _gray_width ;
 			var scale_Y:int = _screen_height / _gray_height ;
+			
+			var p:Point = getMapXY( x, y);
+			if( p.x < 0 )
+				return p;
+			else
+				return new Point( Math.round(p.x * scale_X) , Math.round(p.y * scale_Y) );
+			
+		}
+		/*public function getScaledMapXY(x:int, y:int):Point
+		{
+			var scale_X:int = _screen_width / _gray_width ;
+			var scale_Y:int = _screen_height / _gray_height ;
 			if(map && x < width() && y< height() && map){
 				if( map[x][y] ){
 					if( map[x][y].x >= 0 && map[x][y].y >= 0)
@@ -116,8 +128,19 @@ package structuredlight
 				}
 			}
 			return new Point(-1,-1) 
-		}	
-		
+		}	*/
+		public function getScaledShiftedMapXY( x:int, y:int)
+		{
+			var scale_X:int = _screen_width / _gray_width ;
+			var scale_Y:int = _screen_height / _gray_height ;
+			var p:Point = getMapXY( x,y);
+			if(p.x > 0 && p.y > 0)
+			{
+				var result:Point =  new Point( Math.round((p.x + 0.5) * scale_X) , Math.round((p.y + 0.5) * scale_Y) );
+				return result;
+			}
+			return new Point( -1,-1);	
+		}
 		public function makeMap( median:BitmapData, vlines:Array, hlines:Array, screen_width:int  , screen_height:int ):void
 		{
 			_cam_width = median.width ;

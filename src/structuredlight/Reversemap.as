@@ -70,7 +70,7 @@ package structuredlight
 			{
 				for(var  y:int =0 ; y < cam_map.height();y++)
 				{
-					var p:Point =  getScaledMapXY(x,y) ;
+					var p:Point =  cam_map.getScaledShiftedMapXY( x, y);
 							
 					if( p.x >= 0 && p.y >= 0 && p.x < rev_map.length && p.y < rev_map[0].length)
 					{
@@ -85,7 +85,7 @@ package structuredlight
 			this.dispatchEvent( event_ready)
 
 		}//end reverse
-		public function getScaledMapXY(x:int, y:int):Point
+	/*	public function getScaledMapXY(x:int, y:int):Point
 		{
 			var scale_X:int = cam_map._screen_width / cam_map._gray_width ;
 			var scale_Y:int = cam_map._screen_height / cam_map._gray_height ;
@@ -96,7 +96,8 @@ package structuredlight
 			else
 				return new Point( Math.round(p.x * scale_X) , Math.round(p.y * scale_Y) );
 	
-		}	
+		}
+		*/
 		public function display_rev_map():BitmapData
 		{
 		
