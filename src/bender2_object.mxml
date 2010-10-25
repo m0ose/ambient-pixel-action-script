@@ -70,7 +70,7 @@
 				proj_map.interpolate( _denoise.selected , _percentToKeep.value );
 				filts = [];
 				_img.filters = filts;
-				_img.source = new Bitmap( proj_map.drawProj_map() );
+				//_img.source = new Bitmap( proj_map.drawProj_map() );
 				
 			}
 			

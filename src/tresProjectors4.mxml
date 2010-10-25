@@ -91,16 +91,7 @@
 			// INTERPOLATION STUFF
 			//
 			
-			public function showInterp( n:int)
-			{
-				if( projMap_list && n < projMap_list.length)
-				{
-					var pm:ProjectorMap = projMap_list[ n];
-					
-					_img.source = new Bitmap( pm.drawProj_map()  );
-				}
-			}
-			
+
 			
 			var projMap_list:Array = new Array()
 			

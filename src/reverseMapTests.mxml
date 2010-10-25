@@ -22,6 +22,7 @@
 			import structuredlight.MapFileOpener;
 			import structuredlight.ProjectorMap;
 			import structuredlight.Reversemap;
+			import structuredlight.meshFilter;
 			
 			var cam_map:CameraProjecterMap2;
 			var rev_map:Reversemap;
@@ -573,7 +574,7 @@
 				log += "n="+n+"\n standard deviation of cam map distances " + sd;
 				return log;
 			}
-			
+			/*
 			//
 			// This function does good work getting rid of long skinny triangles
 			//			Todo: consider using angles instead of lengths
@@ -723,6 +724,17 @@
 				var good:Vector.<Point> = goodTrianglesbyAngle();
 				proj_map.triad = new Voronoi( good, null , new Rectangle(0,0, rev_map.width(), rev_map.height() ) )	;
 				proj_map.mypoints = good;
+			}
+			*/
+			function removeBadCoords():void
+			{
+				var pmf:meshFilter = new meshFilter( proj_map);
+				pmf.removeBadBySideLength();
+			}
+			public function removeBadCoordsByAngle():void
+			{
+				var pmf:meshFilter = new meshFilter( proj_map);
+				pmf.removeBadByAngle()
 			}
 			
 			public function jiggle( k:Number = 0.1 , t:Number = 900)

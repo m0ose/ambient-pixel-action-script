@@ -42,21 +42,21 @@ package structuredlight
 		}
 		public function getProjXY( x:int , y:int):Point
 		{
-			if( proj_map[x][y])
+			if( proj_map[x] && proj_map[x][y])
 			{
 				return proj_map[x][y];
 			}
 			else
-				return new Point();
+				return new Point(-1,-1);
 		}
 		public function interpolate( autoCleanUp:Boolean = false, percentToKeep:Number = 1.0 ):void
 		{
 			
 			//THIS IS THE FLOW OF EVENTS
 			//clean up
-			if( autoCleanUp){
+			/*if( autoCleanUp){
 				cleanUp()
-			}
+			}*/
 			//     send status event of cleaned up
 			
 			//make reverse map
@@ -72,11 +72,8 @@ package structuredlight
 			triangulation();
 			fillIn();
 			
-			//		send interpolate status event
+			//	TODO	send interpolate status event
 			
-			//reverse again to make projector map
-			//interpolated_cam_map()
-			//		send DONE status event
 		}
 		
 		//
@@ -377,7 +374,7 @@ package structuredlight
 			return result;
 		}
 		
-		
+		/*
 		public function putImageOnCam_map( img:BitmapData, wid:int = 640, hei:int = 480):BitmapData
 		{
 
@@ -404,11 +401,9 @@ package structuredlight
 			}
 			return result
 		}
+		*/
 		
-		import flash.filters.DisplacementMapFilter
-			import flash.display.BitmapDataChannel
-		
-		
+
 		//
 		// IMAGE DISPLAY FUNCTIONS
 		//		some of these are for debugging, but others may be functional
@@ -422,7 +417,7 @@ package structuredlight
 		{	
 			return cam_map.makeGrayArrayImage() 
 		}
-		
+		/*
 		public function drawProj_map16( ):Array
 		{
 					
@@ -485,6 +480,7 @@ package structuredlight
 			}
 			return bm2
 		}
+		*/
 		/*
 		public function draw_inter_cam_map():BitmapData
 		{

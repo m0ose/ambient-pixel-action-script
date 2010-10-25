@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<!--
+		/*
+		0. manually sort files according to vertical lines( vn), horizontal( hn), black( bn), and white( wn).
+		1. open files b1...bn and blen with files w1...wn to make gray image
+		2. make new camera projector map the size of gray image.
+		3. open v1...vn one at a time and compare to the gray image, add to cameraprojector map y coords.
+		4. open h1...hn , one a  time in-order to make cameraprojector map x coords. note: close each image after reading to save memory. 
+		*/
+	-->
+		
+		
+
+</s:Application>

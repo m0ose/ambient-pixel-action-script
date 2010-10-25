@@ -99,7 +99,7 @@
 				{
 					var pm:ProjectorMap = projMap_list[ n];
 					
-					_img.source = new Bitmap( pm.drawProj_map()  );
+					_img.source = new Bitmap( d24.mapX );
 				}
 			}
 

@@ -1,0 +1,370 @@
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" backgroundColor="#000000">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import CamMapfilters.gradientRemove;
+			
+			import ImageStuff.ImageStuff;
+			
+			import flash.display.*;
+			import flash.media.*;
+			
+			import mx.collections.ArrayCollection;
+			import mx.utils.ObjectUtil;
+			
+			import structuredlight.*;
+			
+			//for loading the camera
+			public var cam:Camera
+			//public var vid:Video
+			public var bmd:BitmapData
+			public var current_refresher:Timer 
+			public var sb:Sandbox3
+			
+			//for attaching images to reverse map
+			public var rev_map:Reversemap
+			var rev_attached_refresher:Timer
+			
+			private var fileO:MapFileOpener = new MapFileOpener()
+			private var scan_divisor:uint = 8;
+			
+			public var cam_resolutions:ArrayCollection = new ArrayCollection(
+				[ {label:"640 x 480", width:640, height:480}, 
+					{label:"320 x 240", width:320, height:240}, 
+					{label:"160 x 120", width:160, height:120}
+				]
+			)
+			
+			
+			public function load_camera(e:Event=null):void
+			{
+				cam = Camera.getCamera( camlist.selectedIndex.toString() )
+				
+				var wid:int = 320
+				var hei:int = 240
+				if(resolution_form){
+					wid = resolution_form.selectedItem.width
+					hei = resolution_form.selectedItem.height
+					cam.setMode( wid, hei, 60)
+					vidDisp.width = cam.width;
+					vidDisp.height = cam.height
+				}
+				vidDisp.attachCamera( cam)
+			}
+			public function tryBMD():void
+			{
+				load_camera();
+				
+				current_refresher = new Timer( 1000/ cam.fps)
+				current_refresher.addEventListener(TimerEvent.TIMER, refresh_current_frame)
+				current_refresher.start()
+				
+			}
+			public function refresh_current_frame(e:TimerEvent):void
+			{
+				if(cam)
+				{
+					bmd = new BitmapData( cam.width, cam.height, false, 0x00ff00)//cam.width,cam.height)		//bmd.draw( vidDisp)
+					bmd.draw( vidDisp)
+					//imgDisp.source = new Bitmap( bmd)	
+				}
+			}
+			
+			//structured light section
+			public function structuredLight_init(state_rate2:int = 300, TPtimeout2:int = 300 , thresh_hold:int = 30, tone:int = 128):void
+			{
+				sb= new Sandbox3( stage, cam, int(stage.width / scan_divisor) , int(stage.height / scan_divisor ));
+				sb.thresh_hold = thresh_hold ;
+				sb.white_tone = 0xff000000 + tone *  0x010101;
+				//this is nice but it leaves a "press esacape to exit" message on too long
+				//stage.displayState = "fullScreen"
+				
+				sb.state_rate = state_rate2
+				sb.TPTimeout = TPtimeout2
+				sb.callibrate()	
+				sb.addEventListener( "CALLIBRATE_DONE", showgraymap) //doesn't work
+				
+				//init the mouse stuff
+				
+				
+			}
+			public function changeCoarsness():void
+			{
+				var coars = Math.pow(2 , _coarsness.value);
+				_corasness_label.text = coars;
+				scan_divisor = coars;
+				
+			}
+			public function showgraymap(e:Event=null):void
+			{
+				var gray_tmp:BitmapData = sb.graymap.makeGrayArrayImage()
+				structuredImage.source = new Bitmap( gray_tmp)
+			}
+			public function contours(e:Event=null):void
+			{
+				var some_bmd:BitmapData  = sb.graymap.contours(12) 
+				structuredImage.source = new Bitmap( some_bmd)
+			}
+			public function update_frame_store_contents(e:Event=null):void
+			{
+				//display the pictures that have been taken
+				FSC.maximum = sb.frames_store.length
+				if( FSC.value >0)
+				{
+					structuredImage.source = new Bitmap( sb.frames_store[ FSC.value + 1])
+				}
+			}
+			
+			public function exportMap(e:Event = null)
+			{
+				sb.graymap.export()
+			}
+			public function importMap(e:Event=null):void
+			{
+				
+				sb = new Sandbox3(stage,cam)
+				sb.importMap()
+			}
+			
+			
+			protected function structuredImage_mouseDownHandler(e:MouseEvent):void
+			{
+				
+				mouse_area.text = " mouse local(X,Y) :("+e.localX+","+e.localY+")"
+				mouse_area.text += " \nprojected  ( " + sb.graymap.getMapXY(e.localX, e.localY) 
+				var dXp_dXc:Number = ( sb.graymap.getMapXY(e.localX +1, e.localY).x - sb.graymap.getMapXY(e.localX, e.localY).x)
+				var dYp_dXc:Number = ( sb.graymap.getMapXY(e.localX + 1, e.localY).y - sb.graymap.getMapXY(e.localX, e.localY).y)
+				var dXp_dYc:Number = ( sb.graymap.getMapXY(e.localX , e.localY + 1).x - sb.graymap.getMapXY(e.localX, e.localY).x)
+				var dYp_dYc:Number = ( sb.graymap.getMapXY(e.localX , e.localY + 1).y - sb.graymap.getMapXY(e.localX, e.localY).y)
+				mouse_area.text += "\n dXp/dXc : " + dXp_dXc+" dYp/dXc : "+dYp_dXc+"\n dXp/dYc :"+dXp_dYc+" dYp/dYc :"+dYp_dYc
+			}
+			public function edges():void
+			{
+				if(sb){
+					structuredImage.source = new Bitmap( sb.graymap.denoise2(16)) 	
+				}
+			}
+		
+			//
+			//
+			
+			//
+			//
+			//
+			//below is for the reverse map section
+			//
+			
+			
+		
+			public function goFullScreen( )
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIGhandler)
+				stage.displayState = "fullScreen"
+				
+			}
+			
+			private function goBIGhandler(e:FullScreenEvent)
+			{
+				
+				if(structuredImage.content)
+				{
+					if(e.fullScreen)
+					{
+						structuredImage.scaleX = stage.width / structuredImage.content.width
+						structuredImage.scaleY = stage.height / structuredImage.content.height
+						structuredImage.x = 0
+						structuredImage.y = 0
+						
+						/*var BIGImage:DisplayObject = structuredImage.content
+						BIGImage.scaleX = stage.width / BIGImage.width
+						BIGImage.scaleY = stage.height / BIGImage.height
+						this.stage.addChild( BIGImage).name = "BIG ole Image"		
+						*/
+					}
+					else //not fullscreen anymore
+					{
+						//stage.removeChild( stage.getChildByName("BIG ole Image") )
+						structuredImage.scaleX = 1
+						structuredImage.scaleY = 1
+						structuredImage.x = 860//hard coded. not good
+					}
+					
+				}
+			}
+			
+			//
+			//	TRACK LASER ...
+			//
+			
+			import laserStuff.*;
+			public var lazy:Laser_follower 
+			
+			
+			
+			function trackLaser2()
+			{
+				lazy = new Laser_follower( cam);
+				lazy.addEventListener(lazy.moveEvent, monitorLaser);
+				
+			}
+			public function monitorLaser( e:Event)
+			{
+				if( _visibleDebug.selected)
+				{
+					var res = lazy.curr.clone();
+					var circ:Shape = new Shape();
+					circ.graphics.lineStyle( 2, 0xff0000);
+					circ.graphics.drawCircle( lazy.position.x, lazy.position.y, 5);
+					res.draw( circ);
+					_imgLaser.source = new Bitmap( res);
+				}
+				if( sb && sb.graymap)
+				{
+					var projP:Point = sb.graymap.getScaledMapXY( lazy.position.x, lazy.position.y);
+					if( projP.x > 0)//if good point
+					{
+						_lazylog.text = projP.toString() + "\n" + _lazylog.text;
+						
+					}
+				}
+			}
+		
+			//
+			// testing ...
+			//
+		
+			
+			var tim:Timer
+			var bmdOld:BitmapData
+			function trackLaser()
+			{
+					tryBMD();
+					tim = new Timer( 100);
+					tim.addEventListener( TimerEvent.TIMER, check)
+					tim.start();
+					
+			}
+			function check(e:TimerEvent)
+			{
+				if(bmd)
+				{
+					var res:BitmapData = bmd.clone();
+					var circ:Shape = new Shape();
+					if(bmdOld){
+						//var active:Rectangle = activeRect( bmdOld, bmd);
+						//var p:Point = findBrightest( bmd, active );
+						var p:Point = findBrightest( bmd);
+						circ.graphics.lineStyle( 2, 0xff0000);
+						circ.graphics.drawCircle( p.x, p.y, 5);
+						//circ.graphics.drawRoundRect( active.x, active.y , active.width, active.height, 3,3);
+						res.draw( circ);
+						_imgLaser.source = new Bitmap( res);
+					}
+				
+					bmdOld = bmd.clone();
+				}	
+					
+				
+			}
+			private function findBrightest( bm:BitmapData, rect:Rectangle = null):Point
+			{
+				var threshold:uint = 0xff222222;
+				var bp:Point = new Point(0,0)
+				var bv:uint = 0
+				var istuff:ImageStuff = new ImageStuff();
+					
+				if(rect == null){
+					rect = bm.rect }
+				bmdOld.draw( bmd,null,null,"difference");
+				for( var x:int = rect.topLeft.x ; x <= rect.bottomRight.x ; x = x + 2)
+				{
+					for( var y:int = rect.topLeft.y ; y< rect.bottomRight.y ; y = y + 2)
+					{
+						var tmpv:uint = bm.getPixel(x, y);
+						var diffv:uint = bmdOld.getPixel(x,y);
+						if( istuff.AbrighterB( tmpv, bv) && istuff.AbrighterB( diffv, threshold) )
+						{
+							if( istuff.AbrighterB( tmpv, 0xffaaaaaa) )
+							{
+								bv = tmpv;
+								bp.x = x; bp.y = y
+							}
+						}
+					}
+				}
+				
+				return bp				
+			}
+
+			
+			//
+			// ... TRACK LASER
+			//
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<mx:Accordion x="7.7" y="48.35" width="861" height="552">
+		<s:NavigatorContent label="video" width="100%" height="100%">
+			<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
+			<mx:VideoDisplay width="320" height="240" 
+							 id="vidDisp" 
+							 visible="true"
+							 creationComplete="load_camera( event)"  x="10" y="37"/>
+			<mx:Text text="Choose a camera. there are {camlist.dataProvider.length} camera(s)"  x="14" y="14"/>
+			<mx:Form x="383" y="23" width="310" height="208">
+				
+				<mx:ComboBox id="camlist"
+							 dataProvider="{Camera.names}"
+							 width="200"	
+							 selectedIndex="1" 
+							 change="load_camera(event)"
+							 x="408" y="39"/>
+				<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="1" id="resolution_form" x="408" y="65"  change="load_camera(event)"/>
+			</mx:Form>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="structured light" width="100%" height="100%">
+			<s:Button x="10" y="10" label="callibrate" click="structuredLight_init(state_rate_slider.value, state_rate_slider.value, _thresh_hold.value, _tone.value )"/>
+			<s:Button x="10" y="248" label="show map" click="showgraymap()"/>
+			<mx:Text text=" timout for the state change" x="10" y="113">
+			</mx:Text>
+			<mx:HSlider maximum="4000" minimum="0" id="state_rate_slider" value="600" x="14" y="133" tickInterval="20" snapInterval="20.0"/>
+			
+			<mx:Text text="photos taken " x="12" y="205" width="156"/> 
+			<s:Button x="10" y="277" label="show contours" click="contours()"/>
+			<s:NumericStepper x="10" y="223" maximum="0" focusIn="update_frame_store_contents()" id="FSC" change="update_frame_store_contents()"/>
+			<s:Button x="96" y="48" label="export map" id="load_files" click="exportMap()"/>
+			<s:TextArea x="10" y="419" width="237" id="mouse_area" height="121" />
+			<s:Button x="10" y="48" label="import map" click="importMap()"/>
+			<s:Button x="10" y="389" label="fullscreen" click="goFullScreen()"/>
+			<mx:Image x="200" y="9" id="structuredImage" mouseDown="structuredImage_mouseDownHandler(event)"/>
+			<s:HSlider x="10" y="97" minimum="0" maximum="255" stepSize="1" value="12" id="_thresh_hold"/>
+			<s:Label x="12" y="76" text="Thresh-hold"/>
+			<s:HSlider x="19" y="176" id="_tone" minimum="0" maximum="255" stepSize="1" value="128"/>
+			<s:Label x="10" y="160" text="tone" width="138"/>
+			<s:HSlider x="171" y="177" id="_coarsness" minimum="0" maximum="10" stepSize="1" value="3" change="changeCoarsness()"/>
+			<s:Label x="166" y="158" text="coarsness"/>
+			<s:Label x="226" y="156" text="8" id="_corasness_label"/>
+			
+			
+			
+			
+		</s:NavigatorContent>
+		<s:NavigatorContent label="laser tracking" width="100%" height="100%" backgroundColor="#747373">
+			<s:Button x="10" y="10" label="start tracking" click="trackLaser()"/>
+			<mx:Image x="248" y="14" id="_imgLaser"/>
+			<s:Button x="25" y="45" label="start tracking 2" click="trackLaser2()"/>
+			<s:CheckBox x="26" y="83" label="visible debug" selected="true" id="_visibleDebug"/>
+			<s:TextArea x="10" y="244" id="_lazylog"/>
+		</s:NavigatorContent>
+	</mx:Accordion>
+</s:Application>
+

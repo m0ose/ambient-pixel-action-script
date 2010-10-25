@@ -102,7 +102,7 @@
 			}
 			function show_inter_proj_map()
 			{
-				_img.source = new Bitmap( inter_cam_map.drawProj_map())
+				//._img.source = new Bitmap( inter_cam_map.drawProj_map())
 			}
 			
 			function changeScaleSlider()
@@ -205,10 +205,8 @@
 					{
 						filt = new DisplacementMapFilter( );
 					}
-					if(inter_cam_map)
-						filt.mapBitmap = inter_cam_map.drawProj_map()
-					else
-						filt.mapBitmap = cam_map.makeGrayArrayImage();
+					
+					filt.mapBitmap = cam_map.makeGrayArrayImage();
 					
 					filt.componentX = 1 //red
 					filt.componentY = 2  //green

@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import CamMapfilters.gradientRemove;
+			
+			import com.nodename.Delaunay.Triangle;
+			import com.nodename.Delaunay.Voronoi;
+			
+			import mx.charts.LineChart;
+			import mx.collections.ArrayCollection;
+			import mx.graphics.codec.PNGEncoder;
+			
+			import structuredlight.CameraProjecterMap2;
+			import structuredlight.Displacement24;
+			import structuredlight.MapFileOpener;
+			import structuredlight.ProjectorMap;
+			import structuredlight.Reversemap;
+			import structuredlight.meshFilter;
+			import structuredlight.projMapToString;
+			
+			var cam_map:CameraProjecterMap2;
+			var rev_map:Reversemap;
+			var fileO:MapFileOpener;
+			var proj_map:ProjectorMap;
+			
+			function load()
+			{
+				fileO = new MapFileOpener();
+				fileO.importMap()
+				fileO.addEventListener( "loaded Map", loaded)
+			}
+			function loaded(e:Event = null)
+			{
+				//rev_map = new Reversemap( fileO.cam_map)
+				cam_map = fileO.cam_map
+				_log.text = " NEW Cam map loaded \n " + cam_map.dumpParameters();
+			}
+			
+			
+			function reverse()
+			{
+				rev_map = new Reversemap( cam_map) ;
+				rev_map.reverse();
+				
+				_img.source = new Bitmap( rev_map.display_rev_map() );
+			}
+			function showMap()
+			{
+				var bm:Bitmap = new Bitmap( cam_map.makeGrayArrayImage() );
+				bm.scaleX = cam_map._screen_width / cam_map._cam_width;
+				bm.scaleY = cam_map._screen_height / cam_map._cam_height;
+				
+				_img.source = bm;
+				
+			}
+			function interpolate()
+			{
+				proj_map = new ProjectorMap( cam_map);
+				proj_map.interpolate( false , _percentPoints.value );
+				
+				if( !rev_map)
+					rev_map= proj_map.rev_map;
+			}
+			function drawTriangles():BitmapData
+			{
+				var bm:BitmapData = rev_map.display_rev_map() ;
+				
+				var triad = proj_map.triad ;
+				
+				var s:Shape = new Shape();
+				s.graphics.lineStyle(1, 0xff0000 );
+				for each( var tr:Triangle in triad._triangles)
+				{
+					var p1:Point = tr.sites[0].coord ;
+					var p2:Point = tr.sites[1].coord ;
+					var p3:Point = tr.sites[2].coord ;	
+					
+					s.graphics.moveTo( p1.x, p1.y ) ;
+					s.graphics.lineTo( p2.x, p2.y ) ;
+					s.graphics.lineTo( p3.x, p3.y ) ;
+					s.graphics.lineTo( p1.x, p1.y ) ;
+				}
+				
+				bm.draw( s) ;
+				return bm
+			}
+			function displayTriangles()
+			{
+				_img.source = new Bitmap( drawTriangles() ) ;
+			}
+			
+			function analysis()
+			{
+				
+			}
+			
+			
+		
+			function removeBadGrad()
+			{
+				var grad:gradientRemove = new gradientRemove();
+				_img.source = new Bitmap( grad.gradientDetect(cam_map) );
+				
+			
+				
+				cam_map = grad.removeBadGradient(cam_map);
+				_log.text += "\n" + grad._log;
+				
+				
+			}
+			
+			
+			function reverseTriangles()
+			{
+				var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, 0x000000);
+				
+				if( proj_map)
+				{
+					var s:Shape = new Shape();
+					s.graphics.lineStyle(1, 0xffffff );
+					
+					
+					var camTriads = proj_map.getCameraTriangles();
+					for each( var tr:Array in camTriads)
+					{
+						s.graphics.moveTo( tr[0].x ,tr[0].y);
+						s.graphics.lineTo( tr[1].x, tr[1].y);
+						s.graphics.lineTo( tr[2].x, tr[2].y);
+						s.graphics.lineTo( tr[0].x, tr[0].y);
+						
+						
+					}
+					bm.draw( s);
+				}
+				_img.source = new Bitmap( bm);
+			}
+			
+			function tryUVMapping():String
+			{
+				var result:String = "2 \n";
+				// todo figure out resolution automatically
+				var xdivisions:int = 32 
+				var ydivisions:int = 16;
+	
+				result += int(xdivisions + 1) + " " + int(ydivisions + 1) + "\n";
+				
+				for( var yn:Number = 0 ; yn <= ydivisions; yn++)
+				{
+					for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
+					{
+						var x:Number = 2 * ( xn / xdivisions ) - 1 ;
+						var y:Number = 2 * ( yn / ydivisions ) - 1;
+						var xm:int = Math.floor( cam_map.width() * (x+1)/2 );
+						var ym:int = Math.floor( cam_map.height() * (y + 1)/2 );
+						var u:Number = cam_map.getMapXY( xm, ym ).x;
+						var v:Number = cam_map.getMapXY( xm, ym ).y;
+						var i:Number = 1 ; 
+						if( u >=0 && v >=0 )
+						{
+							u =  u / cam_map._gray_width ;
+							v =  v / cam_map._gray_height ;
+						}
+						else
+						{
+							u = v = -1001;
+							i = -1 ;
+						}
+						
+						result += x + " " + y + " " + u + " " + v + " " + i + "\n";
+						
+					}
+				}
+				return result;
+			}
+			function tryUVMapping2():String
+			{
+				var result:String = "2 \n";
+				// todo figure out resolution automatically
+				var xdivisions:int = 64 ; 
+				var ydivisions:int = 48 ;
+				
+				result += int(xdivisions + 1) + " " + int(ydivisions + 1) + "\n";
+				
+				for( var yn:Number = 0 ; yn <= ydivisions; yn++)
+				{
+					for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
+					{
+						var x:Number = 2 * ( xn / xdivisions ) - 1 ;
+						var y:Number = 2 * ( yn / ydivisions ) - 1;
+						var xm:int = Math.floor( proj_map.width()  * (x+1)/2 );
+						var ym:int = Math.floor( proj_map.height() * (y+1)/2 );
+						var u:Number = proj_map.getProjXY( xm, ym ).x;
+						var v:Number = proj_map.getProjXY( xm, ym ).y;
+						var i:Number = 1 ; 
+						if( u >=0 && v >=0 )
+						{
+							u =  u / proj_map.cam_map._screen_width ;
+							v =  v / proj_map.cam_map._screen_height ;
+						}
+						else
+						{
+							u = v = -1001;
+							i = -1 ;
+						}
+						
+						result += x + " " + y + " " + u + " " + v + " " + i + "\n";
+						
+					}
+				}
+				return result;
+			}
+			
+			/*
+			This makes a PBMesh for use with the PbMesh plugin for Quartz composer by Paul Bourke and Christopher Wright
+			For detailed information on the quartz patch goto http://local.wasp.uwa.edu.au/~pbourke/miscellaneous/domemirror/warppatch/
+			For detailed information on the mesh format goto http://local.wasp.uwa.edu.au/~pbourke/dataformats/meshwarp/	
+			
+			This function makes a string that represents a rectangular mesh(open GL style regular mesh)
+			first line: is the type of mesh .  1=planar, 2=fisheye, 3=cylindrical panorama, 4=spherical panorama( for this, put it at two)
+			second line : Dimensions of mesh. I use 64 x 48 usually( 64 48)
+			next lines : Represent a node index in the mesh. Go from left to right and up to down. EG. for y in 48 { for x in 64 { ...} }
+					For Each Line:
+			        vertex coordinates (x,y), texture coordinates (u,v) and an intensity mapping (i).
+					if there is no coord for that point put u = -1001 v = -1001 and i = -1 
+			
+
+			here is quick example of what it looks like:
+			2 
+			65 49
+			0.96875 1 1002 1002 -1
+			1 1 1002 1002 -1
+			-1 0.9583333333333334 1002 1002 -1
+			-0.96875 0.9583333333333334 0.7359375 0.55125 1
+			-0.9375 0.9583333333333334 0.72890625 0.5525 1
+			-0.90625 0.9583333333333334 0.72265625 0.55375 1
+			-0.875 0.9583333333333334 0.71640625 0.55375 1
+			-0.84375 0.9583333333333334 0.7109375 0.55625 1
+			... and so and and so forth ...
+			*/ 
+			function tryUVMappingQuartz( xdivisions:int = 64, ydivisions = 48):String
+			{
+				var result:String = "2 \n";
+				// todo figure out resolution automatically
+				var xdivisions:int = 64 ; 
+				var ydivisions:int = 48 ;
+				
+				result += int(xdivisions + 1) + " " + int(ydivisions + 1) + "\n";
+				
+				for( var yn:Number = 0 ; yn <= ydivisions; yn++)
+				{
+					for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
+					{
+						var x:Number = 2 * ( xn / xdivisions ) - 1 ;
+						var y:Number = 2 * ( yn / ydivisions ) - 1;
+						var xm:int = Math.floor( proj_map.width()  * (x+1)/2 );
+						var ym:int = Math.floor( proj_map.height() * (y+1)/2 );
+						var u:Number = proj_map.getProjXY( xm, ym ).x;
+						var v:Number = proj_map.getProjXY( xm, ym ).y;
+						var i:Number = 1 ; 
+						if( u >=0 && v >=0 )
+						{
+							u =  u / proj_map.cam_map._screen_width ;
+							v =  v / proj_map.cam_map._screen_height ;
+						}
+						else
+						{
+							u = v = -1000;
+							i = -1 ;
+						}
+						//the output for the quartz PBMesh plugin is inverted. 
+						//result += x + " " + y + " " + u + " " + v + " " + i + "\n";
+						// the repaired version is below
+						result += x + " " + -1 * y + " " + (1 - u).toString() + " " + (1-v).toString() + " " + i + "\n";
+						
+					}
+				}
+				return result;
+			}
+			function makeUVMesh():void
+			{
+				fillInChanges();
+				_log.text = tryUVMapping2();
+			}
+			function makeUVMeshQuartz()
+			{
+				fillInChanges();
+				_log.text = tryUVMappingQuartz();
+			}
+			function saveQuartzMesh()
+			{
+				fillInChanges();
+				var pm2s:projMapToString = new projMapToString( proj_map);
+				pm2s.saveQuartzMesh();
+			}
+			function removeBadCoords():void
+			{
+				var pmf:meshFilter = new meshFilter( proj_map);
+				pmf.removeBadBySideLength();
+			}
+			public function removeBadCoordsByAngle():void
+			{
+				var pmf:meshFilter = new meshFilter( proj_map);
+				pmf.removeBadByAngle()
+			}
+			
+			public function jiggle( k:Number = 0.1 , t:Number = 900)
+			{
+				var tmpProjMap:Array = new Array(proj_map.width());
+				for (var x:int = 0 ; x < proj_map.width(); x++)
+				{
+					tmpProjMap = new Array( proj_map.height());
+				}
+				for( var z:int = 0 ; z < 10; z++)
+				{
+					for each( var p:Point in proj_map.mypoints)
+					{
+						var neighbors:Vector.<Point> = proj_map.triad.neighborSitesForSite(p);
+						var cmP:Point = proj_map.proj_map[ p.x][p.y];
+						var forceSumX:Number = 0; 
+						var forceSumY:Number = 0 ; 
+						for each( var nb:Point in neighbors)
+						{
+							var cmNB:Point = proj_map.proj_map[ nb.x ][ nb.y ];
+							var cmDist:Number = Math.sqrt(   Math.pow( cmNB.x - cmP.x , 2)   +   Math.pow( cmNB.y - cmP.y , 2)       );
+							var projDist:Number = Math.sqrt( Math.pow( nb.x - p.x,2 ) + Math.pow(nb.y - p.y,2) ); 
+							var Force:Number = -k *(   projDist - cmDist) ; // F = -k * displacement
+							forceSumX += Force*(cmNB.x - cmP.x);
+							forceSumY += Force*(cmNB.y - cmP.y);
+						}
+						//var sumMagnitude:Number = Math.sqrt( forceSumX * forceSumX + forceSumY * forceSumY);
+						forceSumX /= t;
+						forceSumY /= t;
+						
+						var pNew:Point = new Point( proj_map.proj_map[p.x][p.y].x + forceSumX ,  proj_map.proj_map[p.x][p.y].y + forceSumY );
+						
+						//tmpProjMap[ p.x][p.y] = pNew;
+						proj_map.proj_map[ p.x][p.y] = pNew;
+						
+					}
+				}
+				//proj_map.proj_map = tmpProjMap;
+			}
+			public function fillInChanges():void			
+			{
+				proj_map.triangulation();
+				proj_map.fillIn();	
+			}
+			public function saveX():void
+			{
+				fillInChanges();
+				var f:FileReference = new FileReference();
+				var d24:Displacement24 = new Displacement24();
+				d24.fromProjectorMap( proj_map );
+				
+				var encoderX:PNGEncoder = new PNGEncoder()
+				var bytesX:ByteArray = encoderX.encode( d24.mapX);
+				
+				
+				
+				//f.addEventListener(Event.COMPLETE ,saveY)
+				
+				f.save( bytesX, "xdisplacemnt.png" );
+				
+			}
+			
+			public function saveY():void
+			{
+				fillInChanges()
+				//_log.text += " saving y map" ;
+				
+				var d24:Displacement24 = new Displacement24();
+				d24.fromProjectorMap( proj_map);
+				
+				var f2:FileReference = new FileReference();
+				
+				var encoderY:PNGEncoder = new PNGEncoder()
+				var bytesY:ByteArray = encoderY.encode( d24.mapY);
+				
+				f2.save( bytesY, "ydisplacement.png" );
+				
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<mx:Image x="-6" y="0" id="_img" />
+	<mx:Form x="9" y="10" width="232" height="447" dropShadowVisible="false" contentBackgroundColor="#A7A3A3" contentBackgroundAlpha="1.0" backgroundColor="#585757" backgroundAlpha="0.5">
+		<s:Button label="load map" click="load()" />
+		<s:Button label="reverse map" click="reverse() "/>
+		<s:Button label="show map" click="showMap()" />
+		<s:Button label="remove bad gradient detect" click="removeBadGrad();//gradDetect()"/>
+		<mx:FormItem label="___INTERPOLATION___">
+		</mx:FormItem>
+		<mx:FormItem label="percent of points to keep:">
+		</mx:FormItem>
+		<s:HSlider minimum="0.0" maximum="1.0" id="_percentPoints" value="1.0" stepSize="0.01"/>
+		<s:Button label="interpolate" click="interpolate() " enabled="true"/>
+		<s:Button label="show triangles" click="displayTriangles() "/>
+		<s:Button label="show OtherTriangles" click = "reverseTriangles()"/>
+		<s:Button label="good triangles by angles" click=" removeBadCoordsByAngle()"/>
+		<s:Button label="try removing bad triangles" click= "removeBadCoords()"/>
+		<s:Button label="jiggle" click="jiggle()"/>
+		<s:Button label="make Image Changes( fillIn )" click="fillInChanges()"/>
+		<s:Button label="save X map" click="saveX()"/>
+		<s:Button label="save Y map" click="saveY()"/>
+	</mx:Form>
+	<mx:Form x="10" y="465" width="454" height="173">
+		<mx:FormItem>
+		</mx:FormItem>
+		<s:TextArea width="268" height="232" id="_log"/>
+	</mx:Form>
+	<s:Button x="278" y="78" label="make uv mesh" click="makeUVMesh()"/>
+	<s:Button x="281" y="120" label="make uv mesh quartz" click="makeUVMeshQuartz()"/>
+	<s:Button x="301" y="149" label="save quartz mesh" click="saveQuartzMesh()"/>
+</s:Application>

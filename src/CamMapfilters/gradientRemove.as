@@ -24,6 +24,13 @@ package CamMapfilters
 		}
 		public var _log:String = "";
 		
+		/*
+		This takes a camera projector map2
+		It finds the average global gradient and removes anything that doesn't match that gradient
+		
+		
+		*/
+		
 		public function removeBadGradient(cam_map:CameraProjecterMap2):CameraProjecterMap2
 		{
 			//gradDetect();
@@ -35,7 +42,8 @@ package CamMapfilters
 			{
 				for( var y:int = 0 ; y < cam_map.height(); y++ )
 				{
-					if(mask.getPixel(x,y) != 0xffffff){
+					if(mask.getPixel(x,y) != 0xffffff)
+					{
 						result.map[x][y] = new Point(-1,-1);
 					}
 				}
@@ -111,26 +119,7 @@ package CamMapfilters
 							prev = curr.clone(); 
 						}
 					}
-					/*if( cam_map.getMapXY( x, y).y >= 0)// -1 if bad point
-					{
-						if( curr && curr.x > 0)
-							prev = curr.clone();
-						curr = cam_map.getMapXY( x,y).clone();
-						if( prev && curr && curr.x > 0 && prev.x > 0)
-						{
-							var dy:Number = curr.y - prev.y;
-							if( dy > 0)
-							{
-								global_dy += 1;
-								n++
-							}
-							else if( dy < 1)
-							{
-								global_dy += -1;
-								n++;
-							}
-						}
-					}*/
+					
 				}
 			}
 			//
