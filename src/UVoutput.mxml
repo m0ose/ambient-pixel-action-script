@@ -17,6 +17,7 @@
 			import mx.collections.ArrayCollection;
 			import mx.graphics.codec.PNGEncoder;
 			
+			import structuredlight.BourkeMesh;
 			import structuredlight.CameraProjecterMap2;
 			import structuredlight.Displacement24;
 			import structuredlight.MapFileOpener;
@@ -325,8 +326,12 @@
 			function saveQuartzMesh()
 			{
 				fillInChanges();
-				var pm2s:projMapToString = new projMapToString( proj_map);
-				pm2s.saveQuartzMesh();
+				var pbM:BourkeMesh = new BourkeMesh();
+				pbM.projMapToBourkeMesh( proj_map);
+				_img.source = new Bitmap( pbM.displayMesh() );
+				pbM.saveQuartzMesh();
+				//var pm2s:projMapToString = new projMapToString( proj_map);
+				//pm2s.saveQuartzMesh();
 			}
 			function removeBadCoords():void
 			{

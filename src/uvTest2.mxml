@@ -7,52 +7,18 @@
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
+			import structuredlight.BourkeMesh;
 			
 			
 			
-			function displayMesh(meshString:String)
+			public function displayMesh(meshString:String):BitmapData
 			{
 				
-				var meshArray:Array ;
+				
 				var indexs:Array = meshString.split( "\n");
-				_log.text = " indexs length:"+ indexs.length + " \n" ;//+ "  " +meshArray.toString();
+				//_log.text = " indexs length:"+ indexs.length + " \n" ;//+ "  " +meshArray.toString();
 				var type:int = int(indexs[0]);
 				
-				/*
-				if( type > 0)//only rectangular supported
-				{
-					var dimensionsString:String = indexs[1]; 
-					var dimensions = dimensionsString.split(" ");
-					var width:int = dimensions[0] ;
-					var height:int = dimensions[1] ;
-					meshArray = new Array( width);
-					for( var m:int ; m < width ;m++)
-					{
-						meshArray[m] = new Array(height);
-					}
-					
-					_log.text += " dimensions  :" +dimensions.toString();
-					if(indexs.length >  (width * height) + 2){
-						_log.text += "Error .data file contains" + ( indexs.length -2 -  width * height )+ " extra entrys\n";
-					} 
-					
-					for( var p:int = 2; p < (width * height) -2 ; p++ )
-					{
-						var entry:String = indexs[p];
-						var entryArr:Array = meshArray[(p-2) % width][Math.floor((p-2) / width)] = entry.split(" ");
-						if( entryArr.length != 5){
-							_log.text += "Error at " + p + " of " + entryArr ;  
-						}
-					
-					}
-					
-				}
-				*/
-				
-				
-				//_log.text += "  " +meshArray.length
-				//_log.text += "  " +meshArray[57][40].toString();
-				//
 				
 				var mesh:Array = indexs.slice(2);
 				_log.text += " mesh array length : " + mesh.length + "\n";
@@ -67,18 +33,16 @@
 				
 				var bmd:BitmapData = new BitmapData( 640,480,false,0x000000);
 				var sh1:Shape = new Shape();
-				//var sh2:Shape = new Shape();
-				sh1.graphics.lineStyle(1,0x00aa00);
 								
 				
 				for ( var n:int = 0 ; n < mesh.length; n++)
 				{
 					var tmp:String = mesh[n];
-					var m:Array = tmp.replace(/^\s+/,"").replace(/\s+$/,"").split(/\s+/);//split at white spaces
+					var m:Array = splitAtWhiteSpace(tmp);//split at white spaces
+					
 					if( m.length != 5){
 							_log.text += "ERROR m.lengt != 5 " + m + "   at  " + n;
 					}
-			
 					else
 					{
 						// get corrected x,y
@@ -86,108 +50,125 @@
 						var yc:int = Math.floor( n/width);
 						
 						var drawPoint:Boolean = true;
-						if( yc <= 0){//up
-							_log.text += "^";
+						if( yc <= 0){//up //could put a select case in here instead, get rid of repeated code. 
+							//_log.text += "^";
 							drawPoint = false;
 						}
 						if( yc == height - 1)//down
 						{
-							_log.text += "_";
+							//_log.text += "_";
 							drawPoint = false;
 						}
 						if( xc <= 0) //left
 						{
-							_log.text += "<";
+							//_log.text += "<";
 							drawPoint = false;
 						}
 						if( xc == width - 1)//right
 						{		
-							_log.text += ">";
+							//_log.text += ">";
 							drawPoint = false;
 						}
 						
 						if( drawPoint )
 						{
-							var up:Array = spitAtWhiteSpace( mesh[n - width]);
-							var down:Array = spitAtWhiteSpace( mesh[n + width]);
-							var left:Array = spitAtWhiteSpace( mesh[n - 1]);
-							var right:Array = spitAtWhiteSpace( mesh[n - 1]);
+							var up:Array = splitAtWhiteSpace( mesh[n - width]);
+							var down:Array = splitAtWhiteSpace( mesh[n + width]);
+							var left:Array = splitAtWhiteSpace( mesh[n - 1]);
+							var right:Array = splitAtWhiteSpace( mesh[n - 1]);
 							//
 							// draw xy map
 							//
-							sh1.graphics.moveTo( Number( m[0] ) * bmd.width , Number( m[1] ) * bmd.height ); 
-							sh1.graphics.lineStyle(2,0xffff00);
-							sh1.graphics.lineTo( Number( up[0]) * bmd.width , Number( up[1]) * bmd.height );
-							
-							sh1.graphics.moveTo( Number( m[0] ) * bmd.width , Number( m[1] ) * bmd.height ); 
 							sh1.graphics.lineStyle(1,0x00ff00);
-							sh1.graphics.lineTo( Number( down[0]) * bmd.width , Number( down[1]) * bmd.height );
-							
-							sh1.graphics.moveTo( Number( m[0] ) * bmd.width , Number( m[1] ) * bmd.height ); 
-							sh1.graphics.lineStyle(2,0x0000ff);
-							sh1.graphics.lineTo( Number( left[0]) * bmd.width  , Number( left[1]) * bmd.height );
-
-							sh1.graphics.moveTo( Number( m[0] ) * bmd.width , Number( m[1] ) * bmd.height ); 
-							sh1.graphics.lineStyle(1,0xff0000);
-							sh1.graphics.lineTo( Number( right[0]) * bmd.width , Number( right[1]) * bmd.height );
+							//up
+							sh1.graphics.moveTo( bmd.width * (Number( m[0] ) + 1)/2 , bmd.height * (Number( m[1] ) + 1)/2); 
+							sh1.graphics.lineTo( bmd.width * (Number( up[0] ) + 1)/2 , bmd.height * (Number( up[1] ) + 1)/2);
+							//down
+							sh1.graphics.moveTo( bmd.width * (Number( m[0] ) + 1)/2 , bmd.height * (Number( m[1] ) + 1)/2); 
+							sh1.graphics.lineTo( bmd.width * (Number( down[0] ) + 1)/2 , bmd.height * (Number( down[1] ) + 1)/2);
+							//left
+							sh1.graphics.moveTo( bmd.width * (Number( m[0] ) + 1)/2 , bmd.height * (Number( m[1] ) + 1)/2); 
+							sh1.graphics.lineTo( bmd.width * (Number( left[0] ) + 1)/2 , bmd.height * (Number( left[1] ) + 1)/2);
+							//right
+							sh1.graphics.moveTo( bmd.width * (Number( m[0] ) + 1)/2 , bmd.height * (Number( m[1] ) + 1)/2); 
+							sh1.graphics.lineTo( bmd.width * (Number( right[0] ) + 1)/2 , bmd.height * (Number( right[1] ) + 1)/2);
 						
 							//
 							//draw u,v map
 							//
-							if( m[2] >= Number(0) && Number(m[4]) >0 && Number(m[3]) >= 0)
+							if( Number(m[2]) >= 0 && Number(m[3]) >= 0 && Number(m[4]) >= 0)
 							{
-								sh1.graphics.lineStyle(1,0x0fffff);
-								sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
-								sh1.graphics.lineTo( Number( up[2]) * bmd.width , Number( up[3]) * bmd.height );
-							
-								sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
-								sh1.graphics.lineTo( Number( down[2]) * bmd.width , Number( down[3]) * bmd.height );
-							
-								sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
-								sh1.graphics.lineTo( Number( left[2]) * bmd.width  , Number( left[3]) * bmd.height );
+								//up
+								sh1.graphics.lineStyle(2,0x0fffff);
+								if( Number(up[2]) >= 0   &&   Number(up[3]) >= 0 )
+								{
+									sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
+									sh1.graphics.lineTo( Number( up[2]) * bmd.width , Number( up[3]) * bmd.height );
+								}
+								//down
+								if( Number(down[2]) >= 0   &&   Number(down[3]) >= 0 )
+								{
+									sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
+									sh1.graphics.lineTo( Number( down[2]) * bmd.width , Number( down[3]) * bmd.height );
+								}
+								if( Number(left[2]) >= 0   &&   Number(left[3]) >= 0 )
+								{	//left
+									sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
+									sh1.graphics.lineTo( Number( left[2]) * bmd.width  , Number( left[3]) * bmd.height );
+								}
+								if( Number(right[2]) >= 0   &&   Number(right[3]) >= 0 )
+								{	//right
+									sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
+									sh1.graphics.lineTo( Number( right[2]) * bmd.width , Number( right[3]) * bmd.height );
+								}
+
+								//
+								//
+								//connect uv and xy
+								// this looks cool, but doesn't really serve a purpose, and really clutters the screen.
+								/*
+								sh1.graphics.lineStyle( 1, 0xff0000 );
+								sh1.graphics.moveTo( bmd.width * (Number( m[0] ) + 1)/2 , bmd.height * (Number( m[1] ) + 1)/2); 
+								sh1.graphics.lineTo( Number(m[2]) * bmd.width , Number(m[3]) * bmd.height );
+								*/
 								
-								sh1.graphics.moveTo( Number( m[2] ) * bmd.width , Number( m[3] ) * bmd.height ); 
-								sh1.graphics.lineTo( Number( right[2]) * bmd.width , Number( right[3]) * bmd.height );
 							}
-							else
-							{
-								_log.text += m;
-							}
+								
 						}
 					}	
 				}
-				function spitAtWhiteSpace( s:String):Array
-				{
-					return s.replace(/^\s+/,"").replace(/\s+$/,"").split(/\s+/);//split at white spaces
-				}
 				
 					
-						//
-					//
-					//   DRAW Points
-					//
-/*
-				for( var w:int=2; w < indexs.length -1; w++)
-				{
-					var st:String = indexs[w];
-					var dp:Array = st.split(" ");
-					sh1.graphics.lineStyle(2,0xffffff);
-					sh1.graphics.drawRect( Number(dp[2]) * bmd.width, Number(dp[3]) *bmd.height, 2, 2);
-					sh1.graphics.lineStyle(1,0x2200ff);
-					sh1.graphics.drawRect( (Number(dp[0] + 1)/2 ) * bmd.width, ((Number(dp[1]) +1) /2) * bmd.height, 2, 2);
-					//_log.text += " rect"+  Number(dp[2]) * 100 +"," + Number(dp[3]) * 100 +"\n";
-				}
-*/
-				sh1.graphics.endFill();
+		
+				//sh1.graphics.endFill();
 				bmd.draw(sh1);
 				_img.source = new Bitmap( bmd);
 		
 
-				
+				return bmd;
 			}
-			
+			private function splitAtWhiteSpace( s:String):Array
+			{
+				return s.replace(/^\s+/,"").replace(/\s+$/,"").split(/\s+/);//split at white spaces
+			}
+				
 			var fileRef:FileReference;
 			
+			public function importMesh()
+			{
+				var pbm:BourkeMesh = new BourkeMesh();
+				pbm.addEventListener( pbm._completeLoadingEvent, importComplete);
+				pbm.importMeshFile();
+				//_img.source = new Bitmap( pbm.displayMesh() );
+				//_log.text = " map loaded    width" + pbm.width + "  height " + height; 
+			}
+			public function importComplete( e:Event)
+			{
+				_img.source = new Bitmap( e.target.displayMesh() );
+				_log.text = " map loaded    width" + e.target.width + "  height " + e.target.height; 
+			}
+			
+			/*
 			public function importMesh():void
 			{
 				fileRef= new FileReference()
@@ -205,13 +186,22 @@
 				var meshString:String;
 				meshString = fileRef.data.toString() ;
 				
-				displayMesh( meshString);
+				var pbm:BourkeMesh = new BourkeMesh();
+				pbm.meshString = meshString;
+				pbm.getDimensions();
+				_log.text = " map loaded    width" + pbm.width + "  height " + pbm.height; 
+
+				_img.source = new Bitmap( pbm.displayMesh() );
+				_log.text += " map loaded    width" + pbm.width + "  height " + pbm.height;
+				_log.text += "\n\n" + pbm._log;
+
 			}
+			*/
 		]]>
 	</fx:Script>
 	
 	
-	<s:Button x="69" y="67" label="Button" click="importMesh()"/>
+	<s:Button x="69" y="67" label="load mesh .data" click="importMesh()"/>
 	<s:TextArea x="69" y="110" width="482" height="450" id="_log"/>
 	<mx:Image x="582" y="110" id="_img"/>
 </s:Application>

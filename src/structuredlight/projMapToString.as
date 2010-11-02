@@ -1,24 +1,19 @@
 package structuredlight
 {
+	import flash.display.BitmapData;
+	import flash.display.Shape;
 	import flash.net.FileFilter;
 	import flash.net.FileReference;
 
 	public class projMapToString
 	{
 		public var proj_map:ProjectorMap
-		private var fr:FileReference
+		//private var fr:FileReference
 		public function projMapToString(pm:ProjectorMap)
 		{
 			proj_map = pm;
 		}
-		
-		public function saveQuartzMesh(xdivisions:int = 64, ydivisions:int = 48):void
-		{
-			fr = new FileReference();
-			var str:String = MakeUVMap4Quartz(xdivisions, ydivisions );
-			fr.save( str, "QuartzPBMesh.data");				
-		}
-		
+
 		/*
 		This makes a vertex mesh for use with the PbMesh plugin for Quartz composer by Paul Bourke and Christopher Wright
 		For detailed information on the quartz patch goto   http://local.wasp.uwa.edu.au/~pbourke/miscellaneous/domemirror/warppatch/
@@ -46,7 +41,7 @@ package structuredlight
 		-0.84375 0.9583333333333334 0.7109375 0.55625 1
 		... and so and and so forth ...
 		*/ 
-		function MakeUVMap4Quartz( xdivisions:int = 64, ydivisions = 48):String
+		public function MakeUVMap4Quartz( xdivisions:int = 64, ydivisions:int = 48):String
 		{
 			var result:String = "2 \n";
 			// todo figure out resolution automatically
@@ -85,5 +80,9 @@ package structuredlight
 			}
 			return result;
 		}
+		
+	
+		
+
 	}
 }
