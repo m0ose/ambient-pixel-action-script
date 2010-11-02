@@ -277,7 +277,7 @@
 						//the output for the quartz PBMesh plugin is inverted. 
 						//result += x + " " + y + " " + u + " " + v + " " + i + "\n";
 						// the repaired version is below
-						result += x + " " + -1 * y + " " + (1 - u).toString() + " " + (1-v).toString() + " " + i + "\n";
+						result += x + " " + -1 * y + " " + ( u).toString() + " " + (1-v).toString() + " " + i + "\n";
 						
 					}
 				}
@@ -292,6 +292,35 @@
 			{
 				fillInChanges();
 				_log.text = tryUVMappingQuartz();
+			}
+			function displayMesh()
+			{
+				
+				fillInChanges();
+				var str:String = tryUVMappingQuartz();
+				_log.text = str;
+				
+				
+				var indexs:Array = str.split( "\n");
+				var type:int = int(indexs[0]);
+				if( type == 2)
+				{
+					var dimensions:String = indexs[1]; 
+					var width:int = dimensions[0];
+					var height:int = dimensions[1];
+					var meshArray:Array = new Array( width);
+					for( var w:int ; w < width; w++)
+					{
+						meshArray[w] = new Array( height);
+					}
+					for( var i:int = 2 ; i < indexs.length; i++ )
+					{
+						var pointString = indexs[i] ;
+						var points = pointString.split(" ");
+						meshArray[ Math.floor( i) ][i % width];	
+					}
+				}
+				
 			}
 			function saveQuartzMesh()
 			{

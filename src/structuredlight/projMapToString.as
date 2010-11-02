@@ -79,7 +79,7 @@ package structuredlight
 					//the output for the quartz PBMesh plugin is inverted. 
 					//result += x + " " + y + " " + u + " " + v + " " + i + "\n";
 					// the repaired version is below
-					result += x + " " + -1 * y + " " + (1 - u).toString() + " " + (1-v).toString() + " " + i + "\n";
+					result += x + " " + -1 * y + " " + ( u).toString() + " " + (1-v).toString() + " " + i + "\n";
 					
 				}
 			}
