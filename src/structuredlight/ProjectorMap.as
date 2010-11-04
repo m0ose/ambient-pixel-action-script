@@ -52,12 +52,8 @@ package structuredlight
 		public function interpolate( autoCleanUp:Boolean = false, percentToKeep:Number = 1.0 ):void
 		{
 			
-			//THIS IS THE FLOW OF EVENTS
-			//clean up
-			/*if( autoCleanUp){
-				cleanUp()
-			}*/
-			//     send status event of cleaned up
+			//init varaibles
+			DONE_EVENT = new Event( DONE_EVENT_STRING );
 			
 			//make reverse map
 			rev_map =  new Reversemap( cam_map );
@@ -411,11 +407,11 @@ package structuredlight
 		//
 		public function displayRevMap():BitmapData
 		{
-			return rev_map.display_rev_map()	
+			return rev_map.display_rev_map();	
 		}
 		public function display_graymap():BitmapData
 		{	
-			return cam_map.makeGrayArrayImage() 
+			return cam_map.makeGrayArrayImage() ;
 		}
 		/*
 		public function drawProj_map16( ):Array

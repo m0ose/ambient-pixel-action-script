@@ -10,7 +10,7 @@
 			import structuredlight.BourkeMesh;
 			
 			
-			
+			/*
 			public function displayMesh(meshString:String):BitmapData
 			{
 				
@@ -126,11 +126,11 @@
 								//
 								//connect uv and xy
 								// this looks cool, but doesn't really serve a purpose, and really clutters the screen.
-								/*
+								
 								sh1.graphics.lineStyle( 1, 0xff0000 );
 								sh1.graphics.moveTo( bmd.width * (Number( m[0] ) + 1)/2 , bmd.height * (Number( m[1] ) + 1)/2); 
 								sh1.graphics.lineTo( Number(m[2]) * bmd.width , Number(m[3]) * bmd.height );
-								*/
+								
 								
 							}
 								
@@ -151,52 +151,99 @@
 			{
 				return s.replace(/^\s+/,"").replace(/\s+$/,"").split(/\s+/);//split at white spaces
 			}
+			*/
+				
 				
 			var fileRef:FileReference;
+			
 			
 			public function importMesh()
 			{
 				var pbm:BourkeMesh = new BourkeMesh();
 				pbm.addEventListener( pbm._completeLoadingEvent, importComplete);
 				pbm.importMeshFile();
-				//_img.source = new Bitmap( pbm.displayMesh() );
-				//_log.text = " map loaded    width" + pbm.width + "  height " + height; 
 			}
+			
 			public function importComplete( e:Event)
 			{
 				_img.source = new Bitmap( e.target.displayMesh() );
 				_log.text = " map loaded    width" + e.target.width + "  height " + e.target.height; 
 			}
-			
-			/*
-			public function importMesh():void
+			//
+			//
+			// stitching testing
+			//
+			//
+			var meshList:Array = new Array();
+
+			public function importMesh2()//second file
 			{
-				fileRef= new FileReference()
-				fileRef.browse( )
-				fileRef.addEventListener(Event.SELECT, selectHandler)
-				fileRef.addEventListener(Event.COMPLETE, completeHandler)
-			}
-			
-			private function selectHandler(e:Event):void
-			{
-				fileRef.load()
-			}
-			private function completeHandler(e:Event):void
-			{
-				var meshString:String;
-				meshString = fileRef.data.toString() ;
-				
 				var pbm:BourkeMesh = new BourkeMesh();
-				pbm.meshString = meshString;
-				pbm.getDimensions();
-				_log.text = " map loaded    width" + pbm.width + "  height " + pbm.height; 
-
-				_img.source = new Bitmap( pbm.displayMesh() );
-				_log.text += " map loaded    width" + pbm.width + "  height " + pbm.height;
-				_log.text += "\n\n" + pbm._log;
-
+				pbm.addEventListener( pbm._completeLoadingEvent, importComplete2);
+				pbm.importMeshFile();
+				
 			}
-			*/
+			public function importComplete2( e:Event)
+			{
+				_img.source = new Bitmap( e.target.displayMesh() );
+				_log.text = " map loaded    width" + e.target.width + "  height " + e.target.height + "\n"; 
+				meshList.push( e.target);
+			}
+			function stitchUVMeshes():void
+			{
+			
+				if( meshList.length == 0 )
+				{
+					_log.text += " mesh list < 1   ";
+					return;
+				}
+				var wid:int = 0;
+				var hei:int = 0;
+				
+				wid = meshList[0].width;
+				hei = meshList[0].height;
+										
+					//combine all meshes into 1 mesh
+					//
+				_log.text += " Mesh list length " + meshList.length + " \n" ; 	
+				var newWidth:int = int( meshList.length * wid );
+				var newHeight:int = hei;
+				var meshString:String =  "2\n" + newWidth + " " + newHeight + "\n";
+					
+					// seperate each map into an array of different lines
+					//  so var seperated is an array of arrays
+				var seperated:Array = new Array();
+				for( var i:int = 0; i < meshList.length; i++ )
+				{
+					_log.text += "mesh converted to string" + meshList[i].width + " " + meshList[i].height + "\n" ;
+					var currentBourke:String = meshList[i].meshString;
+					seperated.push( currentBourke.split('\n').slice(2) );//seperate, and throw out first two lines. 
+				}
+				
+				
+				for( var n:int = 0; n < newHeight; n++ )
+				{
+					for( var s:int =0 ; s < meshList.length; s++ )
+					{
+						var m:Array = seperated[s];
+						var ms:Array = m.slice( n * wid, (n+1) * wid);
+						for ( var n2:int = 0; n2 < ms.length ; n2++)
+						{
+							//NEED TODO adjust the coordinates so that they are not right on top of eachother.
+							meshString += ms[ n2] + "\n";
+						}
+					}
+				}
+				
+				
+				//_log.text += meshString;
+				_log.text += " mesh string length " + meshString.length ; 
+				var newPBM:BourkeMesh = new BourkeMesh();
+				newPBM.meshString = meshString;
+				newPBM.saveQuartzMesh();
+			}
+				
+			
 		]]>
 	</fx:Script>
 	
@@ -204,4 +251,7 @@
 	<s:Button x="69" y="67" label="load mesh .data" click="importMesh()"/>
 	<s:TextArea x="69" y="110" width="482" height="450" id="_log"/>
 	<mx:Image x="582" y="110" id="_img"/>
+	<s:Button x="357" y="67" label="load mesh 2" click="importMesh2()"/>
+	<s:Button x="481" y="67" label="stitch" click="stitchUVMeshes()"/>
+	<s:Label x="267" y="67" text="stitching stuff"/>
 </s:Application>

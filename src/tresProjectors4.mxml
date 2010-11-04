@@ -7,9 +7,13 @@
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
+			import CamMapfilters.gradientRemove;
+			
 			import ImageStuff.ImageStuff;
 			
 			import MultiProjector.multiProjector;
+			
+			import com.nodename.Delaunay.Triangle;
 			
 			import flash.display.*;
 			import flash.media.*;
@@ -109,19 +113,31 @@
 				{
 					var sb:Sandbox3 = mp.sbList[ n ];
 					var pm:ProjectorMap = new ProjectorMap( sb.graymap) ;
+					pm.addEventListener( pm.DONE_EVENT_STRING, donelistener )
 					pm.interpolate( _pointsKept.value );
 					projMap_list[n] = pm; ;
 					_log.text += "\n interpolated : " + n; 
-					setTimeout( interpolateAll, 10);
+					//setTimeout( interpolateAll, 10);
 				}
 				else
 				{
-					_log.text += "\n done interpolating"
+					_log.text += "\n done interpolating";
+					
 				}
 				
 			}
-			
-			public function interpolate1( n:int):void
+			public function donelistener(e:Event)
+			{
+				//maybe put some cool loading cursor here
+				_log.text += " .. wait .. ";
+				
+				// REMOVE EVENT LISTENER. 
+				// this is a sweet peice of code.
+				e.target.removeEventListener( e.type, arguments.callee );
+								
+				setTimeout( interpolateAll, 60);
+			}
+			/*public function interpolate1( n:int):void
 			{
 				if( n < mp.sbList.length && n >= 0)
 				{
@@ -132,7 +148,7 @@
 					_log.text += "\n interpolated : " + n; 
 				}
 			}
-			
+			*/
 			
 			
 			public function stitch():Displacement24
@@ -205,6 +221,215 @@
 				}
 			}
 			
+			
+			//
+			//
+			//
+			//  make mesh for quartz
+			//    a paul bourke style mesh
+			//
+			function mesh_num_change():void
+			{
+				if( _mesh_num.value < projMap_list.length)
+				{
+					reverseTriangles( projMap_list[ _mesh_num.value ]);
+				}
+			}
+			function reverseTriangles( projmap:ProjectorMap ):void
+			{
+				
+				
+				if( projmap)
+				{
+					var bm:BitmapData = new BitmapData( projmap.width(), projmap.height() , false, 0x000000);
+					var s:Shape = new Shape();
+					s.graphics.lineStyle(1, 0xffffff );
+					
+					
+					var camTriads:Vector.<Array> = projmap.getCameraTriangles();
+					for each( var tr:Array in camTriads)
+					{
+						s.graphics.moveTo( tr[0].x ,tr[0].y);
+						s.graphics.lineTo( tr[1].x, tr[1].y);
+						s.graphics.lineTo( tr[2].x, tr[2].y);
+						s.graphics.lineTo( tr[0].x, tr[0].y);
+						
+						
+					}
+					bm.draw( s);
+					_mesh_img.source = new Bitmap( bm);
+				}
+				
+			}
+			function removeSkinnyTriangles():void
+			{
+				if( _mesh_num.value < projMap_list.length)
+				{
+					var proj_map:ProjectorMap = projMap_list[ _mesh_num.value];
+					var pmf:meshFilter = new meshFilter( proj_map);
+					pmf.removeBadByAngle();
+					reverseTriangles( proj_map);
+				}
+			}
+			function removeLongTriangles():void
+			{
+				if( _mesh_num.value < projMap_list.length)
+				{
+					var proj_map:ProjectorMap = projMap_list[ _mesh_num.value];
+					var pmf:meshFilter = new meshFilter( proj_map);
+					pmf.removeBadBySideLength();	
+					reverseTriangles( proj_map);
+				}
+			}
+			
+			/*  this technique turned out to be harder than just stitching the actual projector maps together then making a mesh
+			function stitchUVMeshes()
+			{
+				
+				var meshList:Array = new Array( );
+				var n_proj:int = mp.projector_count ;
+				
+				var wid:int = 0;
+				var hei:int = 0;
+				
+				if( projMap_list.length > 0 )
+				{
+					for( var i:int = 0 ; i < projMap_list.length ; i++ )
+					{
+						//make bourke mesh for each projector map
+						//
+						var proj_map:ProjectorMap = projMap_list[ i];
+						var mesh:BourkeMesh = new BourkeMesh();
+						mesh.projMapToBourkeMesh( proj_map);
+						wid = mesh.width;
+						hei = mesh.height;
+						var st:String = mesh.meshString ;
+						meshList.push( st);
+					}
+					
+					//combine all meshes into 1 mesh
+					//
+					
+					var newWidth:int = int( meshList.length * wid );
+					var newHeight:int = hei;
+					var meshString:String =  "2\n" + newWidth + " " + newHeight + "\n";
+					
+					// seperate each map into an array of different lines
+					//  so var seperated is an array of arrays
+					var seperated:Array = new Array();
+					for( i = 0; i < meshList.length; i++ )
+					{
+						var currentBourke:String = meshList[i];
+						seperated.push( currentBourke.split('\n').slice(2) );//seperate, and throw out first two lines. 
+					}
+					
+					while( seperated[0].length >= width )
+					{
+						for( i=0; i < seperated.length;i++)
+						{
+							var sep:Array = seperated[i];
+							var oneleaf:Array = sep.slice(0, wid );
+							for( var n1:int = 0; n1 < oneleaf.length; n1++)
+							{
+								//IMPORTANT : TODO CHANGE X,Y VALUES SO THAT THEY DON'T OVERLAP. 
+								//   oneleaf[ n1].x = ?
+								meshString += oneleaf[n1] + "\n" ;
+							}
+							seperated[i] = sep.slice( wid);
+						}
+					}
+					_log.text = meshString;
+					var newPBM:BourkeMesh = new BourkeMesh();
+					newPBM.meshString = meshString;
+					newPBM.saveQuartzMesh();
+				}
+				
+			}
+			*/
+			/*
+			function stitchUVMeshes2BACKUP()
+			{
+				var sb1:Sandbox3 = mp.sbList[0];
+				
+				
+				var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
+				bigProjMap.proj_map = new Array();
+				
+				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+				{
+					var current_pm1:ProjectorMap = projMap_list[ pn] ;
+					current_pm1.triangulation();
+					current_pm1.fillIn();
+				}
+				
+				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+				{
+					var current_pm:ProjectorMap = projMap_list[ pn] ;
+					bigProjMap.proj_map = bigProjMap.proj_map.concat( current_pm.proj_map );
+				}
+				_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
+				
+				var PBM:BourkeMesh = new BourkeMesh();
+				PBM.projMapToBourkeMesh( bigProjMap );
+				PBM.saveQuartzMesh();
+			}*/
+			
+			
+			function stitchUVMeshes2()
+			{
+				var sb1:Sandbox3 = mp.sbList[0];
+				
+				
+				var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
+				bigProjMap.proj_map = new Array();
+				
+				var scrWid:int = 0 ;
+				var numOfProjs:int = projMap_list.length;
+				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+				{
+					var current_pm1:ProjectorMap = projMap_list[ pn] ;
+					current_pm1.triangulation();
+					current_pm1.fillIn();
+					scrWid = current_pm1.width();
+				}
+				
+				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+				{
+					var current_pm:ProjectorMap = projMap_list[ pn] ;
+					var section:Array = current_pm.proj_map.slice( Math.round( pn * scrWid / numOfProjs) ,  Math.round( (pn +1)*( scrWid / numOfProjs) )  );  
+					bigProjMap.proj_map = bigProjMap.proj_map.concat( section );
+				}
+				_log.text += "# of projectors : " + numOfProjs +  "   individual proj map width  : " + scrWid + " \n"
+				_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
+			
+				if( scrWid != bigProjMap.width() )
+				{
+					_log.text += " ERROR in stitchmesh :   indiividual map size does not equal final stitched map size. my bad" ;
+				}
+				
+				var PBM:BourkeMesh = new BourkeMesh();
+				PBM.projMapToBourkeMesh( bigProjMap );
+				PBM.saveQuartzMesh();
+				_img.source new Bitmap( PBM.displayMesh() );
+			}
+			
+			
+			public function removeBadGradient():void
+			{
+				
+					for( var n:int = 0 ; n < mp.sbList.length; n++)
+					{
+						var currentSB:Sandbox3 = mp.sbList[n];
+						
+						var grad:gradientRemove = new gradientRemove();
+						
+						_log.text += " removing gradient " + n ;
+						currentSB.graymap = grad.removeBadGradient( currentSB.graymap);
+						_log.text += "\n" + grad._log;
+					}
+				
+			}
+			
 		]]>
 	</fx:Script>
 	
@@ -230,7 +455,7 @@
 		</s:NavigatorContent>
 		<s:NavigatorContent label="callibration" width="100%" height="100%">
 				<mx:Image x="0" y="0" id="_imgCallib"/>
-			<s:Button x="10" y="164" label="  projector callib" click="projectorsStart(_number_of_projectors.value, _timeout.value)"/>
+			<s:Button x="10" y="164" label="CALLIBRATE" click="projectorsStart(_number_of_projectors.value, _timeout.value)"/>
 			<s:NumericStepper x="13" y="22" minimum="1" maximum="10" stepSize="1" id="_number_of_projectors" value="3"/>
 			<s:HSlider x="10" y="79" minimum="0" maximum="255" stepSize="1" value="14" id="_thresh_hold" />
 			<s:Label x="10" y="62" text="threshold" width="59" />
@@ -244,20 +469,30 @@
 			<s:HSlider x="142" y="135" minimum="0" change="_coarsness_label.text=(Math.pow( 2,  _coarsness.value) ).toString()" id="_coarsness" maximum="10" stepSize="1" value="3"/>
 			<s:Label x="143" y="114" text="coarsness"/>
 			<s:Label x="207" y="113" text="8" id="_coarsness_label"/>
+			<s:Button x="10" y="283" label="remove bad gradient" click="removeBadGradient()" />
+			<s:Label x="9" y="211" text="Post callibration stuff" textDecoration="underline" fontSize="20" fontWeight="bold"/>
 		
 		</s:NavigatorContent>
 		<s:NavigatorContent label="interpolation" width="100%" height="100%">
-			<s:Label x="11" y="27" text="percent points to keep"/>
-			<s:HSlider x="11" y="44" id="_pointsKept" minimum="0.0" maximum="1.0" stepSize="0.05" value="0.8"/>
-			<s:Button x="13" y="60" label="interpolate All" click="interpallHandler()"/>
+			<s:Label x="10" y="60" text="percent points to keep"/>
+			<s:HSlider x="10" y="74" id="_pointsKept" minimum="0.0" maximum="1.0" stepSize="0.05" value="0.8"/>
+			<s:Button x="11" y="88" label="interpolate All" click="interpallHandler()"/>
 			<s:Button x="10" y="107" label="stitch and display" click="stitchAndDisplay()"/>
 			<s:Label x="107" y="0" text="interpolate. then check to see if griid looks good"/>
 			<s:Label x="109" y="9" text="also remember. this is still in early developement. so it won't look perfect, yet. ;D" width="455"/>
 		</s:NavigatorContent>
+		<s:NavigatorContent label="clean up meshes" width="100%" height="100%">
+			<mx:Image x="165" y="11" id="_mesh_img"/>
+			<s:NumericStepper x="10" y="0" id="_mesh_num" minimum="0" maximum="10" change="mesh_num_change()"/>
+			<s:Button x="10" y="78" label="remove skinny triangles" click="removeSkinnyTriangles()"/>
+			<s:Button x="10" y="107" label="remove really long triangles" click="removeLongTriangles()"/>
+		</s:NavigatorContent>
 		<s:NavigatorContent label="save displacement maps" width="100%" height="100%" backgroundAlpha="0.5">
 			<s:Button x="10" y="57" label="save X Displacement" click="imageSave('x') " />
 			<s:Button x="150" y="58" label="save Y Displacement" click="imageSave('y') "/>
-			<s:Label x="10" y="19" text="Save both of these images."/>
+			<s:Label x="10" y="19" text="Save both of these images." fontSize="17" fontWeight="bold"/>
+			<s:Button x="10" y="167" label="save stitch meshes" click="stitchUVMeshes2()"/>
+			<s:Label x="10" y="124" text="AND / OR" fontSize="17" fontWeight="bold" width="140"/>
 		</s:NavigatorContent>
 	</mx:TabNavigator>
 

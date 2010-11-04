@@ -101,7 +101,9 @@ package structuredlight
 			
 			}
 				
-			
+			//
+			// helper function 
+			//
 			
 			public function getDimensions():Boolean
 			{

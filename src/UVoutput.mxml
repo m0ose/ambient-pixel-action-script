@@ -109,8 +109,7 @@
 				var grad:gradientRemove = new gradientRemove();
 				_img.source = new Bitmap( grad.gradientDetect(cam_map) );
 				
-			
-				
+
 				cam_map = grad.removeBadGradient(cam_map);
 				_log.text += "\n" + grad._log;
 				
