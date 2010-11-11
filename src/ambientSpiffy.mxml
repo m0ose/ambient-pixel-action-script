@@ -64,8 +64,20 @@
 				var threshHold:uint = _thresh_hold.value;
 				var coarse:int = Math.pow( 2,  _coarsness.value) ;
 			}
+			
+			//
+			//
+			//
+			// START THE SCANE
+			//   this is an event driven dequence of events that goes all the way to displayImage();
+			//  the sequence looks like this:
+			//   startscan  -> scanDone --> removeGradient ->badgraddone ->makeProjMap -> interpolateDone -> removeTriangles ->trianglesDone ->makeDispMap -> displayImage
+			//
+			//
+			
 			function startScan()
 			{
+				_log.text = " start scan  \n";
 				dropDown();
 			    _tabs.selectedIndex = 1;
 				
@@ -80,7 +92,6 @@
 				
 				
 				sandBox.addEventListener( sandBox._DONE_EVENT_STRING, scanDone); //doesn't work
-				_log.text += " start scan ";
 
 			}
 			
@@ -89,8 +100,7 @@
 			
 				progress(20);
 				e.target.removeEventListener( e.type, arguments.callee );
-				_log.text += " scanDone " + e.type;
-				_tabs.selectedIndex = 2;//display tab
+				_log.text += " scanDone " + e.type  +" \n";
 				//clean up bad gradient
 				setTimeout( removeGradient, 1);
 			}
@@ -111,7 +121,7 @@
 
 				e.target.removeEventListener( e.type, arguments.callee );
 				setTimeout( makeProj_Map, 10);
-				_log.text += " bad grad done " + e.type;
+				_log.text += " bad grad done " + e.type +" \n";
 			}
 			function makeProj_Map()
 			{
@@ -128,7 +138,7 @@
 			{
 				progress(60);
 
-				_log.text += " interpolate done " + e.type;
+				_log.text += " interpolate done " + e.type  +" \n";
 				e.target.removeEventListener( e.type, arguments.callee );
 				setTimeout(  removeTriangles,10);
 			}
@@ -144,7 +154,7 @@
 			{
 				progress(70);
 
-				_log.text += " interpolate done " + e.type;
+				_log.text += " interpolate done " + e.type  +" \n";
 				e.target.removeEventListener( e.type, arguments.callee );
 				setTimeout( makeADispMap,10);
 			}
@@ -163,7 +173,7 @@
 			public function d24Done(e:Event)
 			{
 				progress(100);
-				_log.text += " displacement map  done " + e.type;
+				_log.text += " displacement map  done " + e.type  +" \n";
 				e.target.removeEventListener( e.type, arguments.callee );
 				setTimeout( displayImage,500);
 			}
@@ -183,7 +193,7 @@
 			}
 			function progress( percent:int )
 			{
-				_progress.setProgress( percent, 100);
+				_progress.setProgress( Number(percent), 100);
 				_progress.label = " COMPUTING  " + percent + "%" ;
 			}
 			function dropDown()
@@ -222,36 +232,26 @@
 			<s:Label x="10" y="165" text="Step 2:  press SPACE to start scan." fontSize="20"/>
 			<s:Button x="51" y="198" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
 		</s:NavigatorContent>
-		<s:NavigatorContent label="SCAN     " width="100%" height="100%">
-			<mx:TabNavigator x="0" y="0" width="95%" height="95%">
-				<s:NavigatorContent label=" easy " width="100%" height="100%">
-					<s:Button x="5" y="34" label="scan" width="194" height="40" click="startScan()"/>
-					<mx:Image x="233" y="38" id="_img"/>
-				</s:NavigatorContent>
-				<s:NavigatorContent label=" advanced" width="100%" height="100%">
-					<s:Button x="10" y="263" label="SCAN" click="startScan()" width="188" height="60"/>
-					<mx:Form x="2" y="-3" width="686" height="239" >
-						<s:Label text="threshold" width="59" />
-						<s:HSlider minimum="0" maximum="255" stepSize="1" value="7" id="_thresh_hold"  width="391" change="formChange()"/>
-						<s:Label text="gray color" height="11"/>
-						<s:HSlider id="_color" minimum="0" maximum="255" value="228" stepSize="1" width="382" change="formChange()"/>
-						<s:Label text="time to change states"/>
-						<s:HSlider id="_timeout" minimum="200" maximum="3000" stepSize="100" value="400" change="formChange()"/>
-						<s:Label text="coarsness"/>
-						<s:Label text="8" id="_coarsness_label" width="57"/>
-						<s:HSlider minimum="0" change="_coarsness_label.text=(Math.pow( 2,  _coarsness.value) ).toString() ; formChange()" id="_coarsness" maximum="10" stepSize="1" value="3"/>
-					</mx:Form>
-				</s:NavigatorContent>
-			</mx:TabNavigator>
+		<s:NavigatorContent label="options" width="100%" height="100%">
+			<mx:Image x="10" y="10" id="_img"/>
+
+			<mx:Form x="52" y="-3" width="636" height="239" >
+				<s:Label text="threshold" width="59" />
+				<s:HSlider minimum="0" maximum="255" stepSize="1" value="7" id="_thresh_hold"  width="391" change="formChange()"/>
+				<s:Label text="gray color" height="11"/>
+				<s:HSlider id="_color" minimum="0" maximum="255" value="228" stepSize="1" width="382" change="formChange()"/>
+				<s:Label text="time to change states"/>
+				<s:HSlider id="_timeout" minimum="200" maximum="3000" stepSize="100" value="400" change="formChange()"/>
+				<s:Label text="coarsness"/>
+				<s:Label text="8" id="_coarsness_label" width="57"/>
+				<s:HSlider minimum="0" change="_coarsness_label.text=(Math.pow( 2,  _coarsness.value) ).toString() ; formChange()" id="_coarsness" maximum="10" stepSize="1" value="3"/>
+			</mx:Form>
+			<s:Button x="7" y="249" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
 		</s:NavigatorContent>
-		<s:NavigatorContent label="DISPLAY" width="100%" height="100%">
-			<mx:LinkButton x="10" y="10" label="LinkButton"/>
-			<mx:LinkButton x="10" y="28" label="LinkButton"/>
-			<mx:LinkButton x="10" y="46" label="LinkButton"/>
-		</s:NavigatorContent>
+		
 	</mx:TabNavigator>
-	<s:BorderContainer x="0" y="0" width="95%" height="1" id="_dropDown" backgroundAlpha="0.75" backgroundColor="#000000">
+	<s:BorderContainer x="0" y="0" width="95%" height="1" id="_dropDown" backgroundAlpha="0.90" backgroundColor="#000000">
 		<s:TextArea x="41" y="104" id="_log" width="811" visible="false"/>
-		<mx:ProgressBar x="43" y="50" width="809" color="#0018FF" fontSize="20" id="_progress" visible="false"/>
+		<mx:ProgressBar x="43" y="50" width="809" color="#64FDFF" fontSize="20" id="_progress" visible="false" mode="manual" chromeColor="#2736FF"/>
 	</s:BorderContainer>
 </s:Application>
