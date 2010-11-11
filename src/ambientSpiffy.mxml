@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600"
+			   applicationComplete="watchKeyboard()">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
@@ -22,7 +23,9 @@
 			public var sandBox:Sandbox3 ;
 			public var proj_map:ProjectorMap;
 			public var dispMap24:Displacement24;
-	
+			public var _states:Array=["camera", "scanning", "displaying","idle"];
+			public var state:int = 0;
+			
 			public var cam_resolutions:ArrayCollection = new ArrayCollection(
 				[ {label:"640 x 480", width:640, height:480}, 
 					{label:"320 x 240", width:320, height:240}, 
@@ -52,17 +55,53 @@
 			//
 			//  
 			//
-			var timeout:uint = 300;
-			var color:uint = 0xdddddd ;
-			var threshHold:uint = 9 ;
-			var coarse:int = 8 ;
+			public var timeout:uint = 300;
+			public var color:uint = 0xdddddd ;
+			public var threshHold:uint = 9 ;
+			public var coarse:int = 8 ;
 			
-			function formChange()
+			function formChange():void
 			{
-				var timeout:uint = _timeout.value;
-				var color:uint = _color.value * 0x010101 ;
-				var threshHold:uint = _thresh_hold.value;
-				var coarse:int = Math.pow( 2,  _coarsness.value) ;
+				timeout = _timeout.value;
+				color = _color.value * 0x010101 ;
+				threshHold = _thresh_hold.value;
+				coarse = Math.pow( 2,  _coarsness.value) ;
+			}
+			//
+			//
+			//  KEYBOARD WATCHING
+			//
+			public function watchKeyboard():void
+			{
+				dropDown();
+				dropUp();
+				stage.addEventListener(KeyboardEvent.KEY_UP, keyPressed);
+				_log.text = " keyboard being watched ";
+			}
+			private function keyPressed(e:KeyboardEvent):void
+			{
+			/*	trace("Key Released: " + String.fromCharCode(event.charCode) +         " (key code: " + event.keyCode + " character code: " +         event.charCode + ")");
+				if (event.keyCode == Keyboard.SHIFT)
+				{
+					tf.borderColor = 0x000000;
+				}
+			*/
+			   _log.text += e.keyCode + " pressed      " ;
+				if( e.keyCode == Keyboard.ENTER || e.keyCode == Keyboard.SPACE)
+				{
+					if( state != _states.indexOf("scanning") )
+					{
+						startScan();	
+					}
+				}
+				if( state == _states.indexOf("displaying") )
+				{
+					if( e.keyCode == Keyboard.ESCAPE)
+					{
+						dropUpImage();
+					}
+					
+				}
 			}
 			
 			//
@@ -75,10 +114,12 @@
 			//
 			//
 			
-			function startScan()
+			public function startScan():void
 			{
+				state = _states.indexOf("scanning");
 				_log.text = " start scan  \n";
 				dropDown();
+				dropUpImage();
 			    _tabs.selectedIndex = 1;
 				
 				
@@ -92,10 +133,10 @@
 				
 				
 				sandBox.addEventListener( sandBox._DONE_EVENT_STRING, scanDone); //doesn't work
-
+				
 			}
 			
-			function scanDone( e:Event)
+			public function scanDone( e:Event):void
 			{
 			
 				progress(20);
@@ -104,7 +145,7 @@
 				//clean up bad gradient
 				setTimeout( removeGradient, 1);
 			}
-			function removeGradient()
+			public function removeGradient():void
 			{
 				
 				var grad:gradientRemove = new gradientRemove();
@@ -114,7 +155,7 @@
 				//setTimeout( badGradDone, 3000);
 			
 			}
-			function badGradDone(e:Event = null)
+			public function badGradDone(e:Event = null):void
 			{
 				//_tabs.selectedIndex = 0;
 				progress(40);
@@ -123,7 +164,7 @@
 				setTimeout( makeProj_Map, 10);
 				_log.text += " bad grad done " + e.type +" \n";
 			}
-			function makeProj_Map()
+			public function makeProj_Map():void
 			{
 				_img.source = new Bitmap( sandBox.graymap.makeGrayArrayImage() );
 				
@@ -134,7 +175,7 @@
 				proj_map.interpolate(  );
 				
 			}
-			function interpolateDone(e:Event)
+			public function interpolateDone(e:Event):void
 			{
 				progress(60);
 
@@ -142,7 +183,7 @@
 				e.target.removeEventListener( e.type, arguments.callee );
 				setTimeout(  removeTriangles,10);
 			}
-			function removeTriangles()
+			public function removeTriangles():void
 			{
 				var pmf:meshFilter = new meshFilter( proj_map);
 				pmf.removeBadBySideLength();	
@@ -150,7 +191,7 @@
 				pmf.removeBadByAngle();
 
 			}
-			function trianglesDone( e:Event)
+			public function trianglesDone( e:Event):void
 			{
 				progress(70);
 
@@ -158,7 +199,7 @@
 				e.target.removeEventListener( e.type, arguments.callee );
 				setTimeout( makeADispMap,10);
 			}
-			function makeADispMap()
+			public function makeADispMap():void
 			{
 				//
 				//make changesPermanent
@@ -170,44 +211,199 @@
 				dispMap24.fromProjectorMap( proj_map);
 			
 			}
-			public function d24Done(e:Event)
+			public function d24Done(e:Event):void
 			{
 				progress(100);
 				_log.text += " displacement map  done " + e.type  +" \n";
 				e.target.removeEventListener( e.type, arguments.callee );
 				setTimeout( displayImage,500);
+				//setTimeout( dropUp, 1500);
 			}
-			function displayImage()
+
+			public function displayImage():void
 			{
+				cleanUp();
+				_log.text += " DISPLAYING IMAGE"; 	
+				//dropUp();
+				dropImage();
+				d24Image();
 				
-			
-				dropUp();
 			}
-			
-			function makeChangesPermanent()
+			public function cleanUp():void
+			{
+				//set objects to null
+				// and hope auto-garbage collect frees them.
+				sandBox = null;
+				proj_map = null;
+			}
+			public function makeChangesPermanent():void
 			{
 					
 			proj_map.triangulation();
 			proj_map.fillIn();
 					
 			}
-			function progress( percent:int )
+			
+			//
+			//
+			//  FUNCTIONS TO ADJUST THE GUI
+			//
+		
+			public function progress( percent:int ):void
 			{
 				_progress.setProgress( Number(percent), 100);
 				_progress.label = " COMPUTING  " + percent + "%" ;
 			}
-			function dropDown()
+			public function dropDown():void
 			{
-				_dropDown.height = stage.height - 10;
+				_dropDown.y = 10;
+				_dropDown.height = stage.height - _dropDown.y;
+				_dropDown.visible = true;
 				_log.visible = true;
 				_progress.visible= true;
+				
 			}
-			function dropUp()
+			public function dropUp():void
 			{
 				_dropDown.height = 1 ;
+				_dropDown.visible=false;
 				_log.visible = false;
 				_progress.visible= false;
 			}
+			public function dropImage():void
+			{
+				_imgDrop.visible =true;
+				_imgBig.visible = true;
+			}
+			public function dropUpImage():void
+			{
+				_imgDrop.visible = false;
+				_imgBig.visible = false;
+				unInitMouse();
+				state = _states.indexOf("idle");
+			}
+			
+			//
+			//
+			//  D24 DISPLAY STUFF
+			//
+			
+			[Embed(source="images/chacoPanarama3072Xsomething.jpg")]
+			private var chacoPanarama:Class;
+			
+			public function d24Image():void
+			{
+				
+				state = _states.indexOf("displaying");
+				var bm:Bitmap;
+				
+				//display chaco
+				bm = new chacoPanarama();
+				dispMap24.zoom = 0.5; //this is for the chaco , because it's so big.
+				
+				
+				var dimensions:Rectangle = new Rectangle(0,0,bm.width,bm.height);
+				
+				if( dispMap24.mapX.width > dimensions.width )
+					dimensions.width = dispMap24.mapX.width;
+				if( dispMap24.mapX.height > dimensions.height )
+					dimensions.height = dispMap24.mapX.height;
+				
+				var bmd:BitmapData = new BitmapData( dimensions.width, dimensions.height , false);
+				bmd.draw(bm);
+				bm = new Bitmap(bmd);
+				_imgBig.source = bm;
+				
+				d24Changed();
+				
+				initMouse()
+			}
+			public function d24Changed():void
+			{
+				dispMap24.init();
+				_imgBig.filters = [ dispMap24.filter ];
+			}
+			
+			
+			public function initMouse():void
+			{
+				stage.addEventListener(MouseEvent.MOUSE_DOWN, mouse_Down);
+				stage.addEventListener(MouseEvent.MOUSE_UP, mouse_up);
+				stage.addEventListener(MouseEvent.MOUSE_MOVE, mouse_move);
+				stage.addEventListener(MouseEvent.MOUSE_WHEEL, mouse_wheel);
+			}
+			public function unInitMouse():void
+			{
+				stage.removeEventListener(MouseEvent.MOUSE_DOWN, mouse_Down);
+				stage.removeEventListener(MouseEvent.MOUSE_UP, mouse_up);
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, mouse_move);
+				stage.removeEventListener(MouseEvent.MOUSE_WHEEL, mouse_wheel);
+			}
+			//
+			//  MOUSE NAVIGATION STUFF
+			//
+			//
+			public var mouseIsDown:Boolean = false;
+			public var mouseStart:Point = new Point(0,0);
+			public var bendyStart:Point = new Point(0,0)
+				
+			public function mouse_Down( e:MouseEvent):void
+			{//mouse down  ,  mouse down. //send in support
+				mouseStart = new Point( e.localX, e.localY);
+				mouseIsDown = true;
+				if( dispMap24)
+				{
+					bendyStart = new Point( dispMap24.offsetX, dispMap24.offsetY );
+					d24Changed();
+				}
+				
+			}
+			public function mouse_up(e:MouseEvent):void
+			{
+				mouseIsDown = false;
+			}
+			public function mouse_move(e:MouseEvent):void
+			{
+				if( mouseIsDown)
+				{
+					var offsetX:Number = Number( bendyStart.x -( new int(e.localX) - mouseStart.x) );
+					var offsetY:Number = Number( bendyStart.y -( new int(e.localY) - mouseStart.y) );
+					
+					if( dispMap24 )
+					{
+						dispMap24.offsetX = offsetX;
+						dispMap24.offsetY = offsetY;
+					
+						d24Changed();
+					}
+				}
+				
+				
+			}
+			public function mouse_wheel(e:MouseEvent):void
+			{
+				//_log.text += " mouse wheel" + _img.scaleX ;
+				if( dispMap24)
+				{
+					if( e.delta > 0 )
+					{
+						if( dispMap24.zoom < 2.9)
+						{
+							dispMap24.zoom  += 0.02
+						}
+					}
+					else if( e.delta < -0 )
+					{
+						if( dispMap24.zoom  > 0.2)
+						{
+							dispMap24.zoom  -= 0.02 ;
+						}
+					}
+					
+					d24Changed();
+				}
+			}
+			
 		]]>
 	</fx:Script>
 	
@@ -229,8 +425,9 @@
 			<s:ComboBox width="197" dataProvider="{cam_resolutions}" selectedIndex="0" id="resolution_form" change="load_camera(event)" x="36" y="58" visible="false"/>
 
 			<s:Label x="10" y="10" text="Step 1: Choose Camera : " fontSize="20"/>
-			<s:Label x="10" y="165" text="Step 2:  press SPACE to start scan." fontSize="20"/>
+			<s:Label x="10" y="165" text="Step 3:  press SPACE to start scan." fontSize="20"/>
 			<s:Button x="51" y="198" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
+			<s:Label x="10" y="82" text="Step 2: Point camera at screen or Image from Projector" height="44" fontSize="20" width="326"/>
 		</s:NavigatorContent>
 		<s:NavigatorContent label="options" width="100%" height="100%">
 			<mx:Image x="10" y="10" id="_img"/>
@@ -250,8 +447,13 @@
 		</s:NavigatorContent>
 		
 	</mx:TabNavigator>
-	<s:BorderContainer x="0" y="0" width="95%" height="1" id="_dropDown" backgroundAlpha="0.90" backgroundColor="#000000">
-		<s:TextArea x="41" y="104" id="_log" width="811" visible="false"/>
-		<mx:ProgressBar x="43" y="50" width="809" color="#64FDFF" fontSize="20" id="_progress" visible="false" mode="manual" chromeColor="#2736FF"/>
+	<s:BorderContainer x="6" y="400" width="98%" height="400" id="_dropDown" 
+					   backgroundAlpha="0.8" backgroundColor="#000000" cornerRadius="20" borderWeight="6" 
+					   dropShadowVisible="true" color="#FFFFFF" borderColor="#939100"	>
+		<s:TextArea x="41" y="104" id="_log" width="811" visible="false" contentBackgroundColor="#555555"> hello </s:TextArea>
+		<mx:ProgressBar x="43" y="50" width="809" color="#64FDFF" fontSize="20" id="_progress" visible="false" mode="manual" chromeColor="#2736FF" height="70"/>
+	</s:BorderContainer>
+	<s:BorderContainer x="0" y="0" width="100%" height="100%" id="_imgDrop" visible="false">
+		<mx:Image x="0" y="0" id="_imgBig" visible="false" />
 	</s:BorderContainer>
 </s:Application>
