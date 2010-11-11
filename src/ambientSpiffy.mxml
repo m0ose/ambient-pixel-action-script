@@ -66,6 +66,7 @@
 			}
 			function startScan()
 			{
+				dropDown();
 			    _tabs.selectedIndex = 1;
 				
 				
@@ -85,24 +86,35 @@
 			
 			function scanDone( e:Event)
 			{
+			
+				progress(20);
 				e.target.removeEventListener( e.type, arguments.callee );
-
+				_log.text += " scanDone " + e.type;
 				_tabs.selectedIndex = 2;//display tab
 				//clean up bad gradient
-			
+				setTimeout( removeGradient, 1);
+			}
+			function removeGradient()
+			{
 				
 				var grad:gradientRemove = new gradientRemove();
 				grad.addEventListener( String(grad.DONE_EVENT), badGradDone );
 				sandBox.graymap = grad.removeBadGradient( sandBox.graymap);
 			
 				//setTimeout( badGradDone, 3000);
-				_log.text += " scanDone " + e.type;
+			
 			}
 			function badGradDone(e:Event = null)
 			{
-				_tabs.selectedIndex = 0;
-				e.target.removeEventListener( e.type, arguments.callee );
+				//_tabs.selectedIndex = 0;
+				progress(40);
 
+				e.target.removeEventListener( e.type, arguments.callee );
+				setTimeout( makeProj_Map, 10);
+				_log.text += " bad grad done " + e.type;
+			}
+			function makeProj_Map()
+			{
 				_img.source = new Bitmap( sandBox.graymap.makeGrayArrayImage() );
 				
 				//interpolate
@@ -111,14 +123,17 @@
 				proj_map.addEventListener( proj_map.DONE_EVENT_STRING, interpolateDone );	
 				proj_map.interpolate(  );
 				
-				_log.text += " bad grad done " + e.type;
-
 			}
 			function interpolateDone(e:Event)
 			{
+				progress(60);
+
 				_log.text += " interpolate done " + e.type;
 				e.target.removeEventListener( e.type, arguments.callee );
-				
+				setTimeout(  removeTriangles,10);
+			}
+			function removeTriangles()
+			{
 				var pmf:meshFilter = new meshFilter( proj_map);
 				pmf.removeBadBySideLength();	
 				pmf.addEventListener( pmf.DONE_EVENT, trianglesDone);	
@@ -127,24 +142,36 @@
 			}
 			function trianglesDone( e:Event)
 			{
+				progress(70);
+
 				_log.text += " interpolate done " + e.type;
 				e.target.removeEventListener( e.type, arguments.callee );
+				setTimeout( makeADispMap,10);
+			}
+			function makeADispMap()
+			{
 				//
 				//make changesPermanent
 				makeChangesPermanent();
 				//
 				// make d24
 				dispMap24 = new Displacement24( );
-				dispMap24.addEventListener( dispMap24.READY_EVENT, displayImage );
+				dispMap24.addEventListener( dispMap24.READY_EVENT, d24Done );
 				dispMap24.fromProjectorMap( proj_map);
 			
 			}
-			public function displayImage(e:Event)
+			public function d24Done(e:Event)
 			{
-				_log.text += " displacement map ready  " + e.type;
-
+				progress(100);
+				_log.text += " displacement map  done " + e.type;
 				e.target.removeEventListener( e.type, arguments.callee );
-
+				setTimeout( displayImage,500);
+			}
+			function displayImage()
+			{
+				
+			
+				dropUp();
 			}
 			
 			function makeChangesPermanent()
@@ -154,7 +181,23 @@
 			proj_map.fillIn();
 					
 			}
-				
+			function progress( percent:int )
+			{
+				_progress.setProgress( percent, 100);
+				_progress.label = " COMPUTING  " + percent + "%" ;
+			}
+			function dropDown()
+			{
+				_dropDown.height = stage.height - 10;
+				_log.visible = true;
+				_progress.visible= true;
+			}
+			function dropUp()
+			{
+				_dropDown.height = 1 ;
+				_log.visible = false;
+				_progress.visible= false;
+			}
 		]]>
 	</fx:Script>
 	
@@ -207,5 +250,8 @@
 			<mx:LinkButton x="10" y="46" label="LinkButton"/>
 		</s:NavigatorContent>
 	</mx:TabNavigator>
-	<s:TextArea x="397" y="10" width="195" height="163" id="_log"/>
+	<s:BorderContainer x="0" y="0" width="95%" height="1" id="_dropDown" backgroundAlpha="0.75" backgroundColor="#000000">
+		<s:TextArea x="41" y="104" id="_log" width="811" visible="false"/>
+		<mx:ProgressBar x="43" y="50" width="809" color="#0018FF" fontSize="20" id="_progress" visible="false"/>
+	</s:BorderContainer>
 </s:Application>
