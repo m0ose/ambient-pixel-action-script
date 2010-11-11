@@ -125,7 +125,8 @@ package structuredlight
 		public var _height:int
 	    public var thresh_hold:int = 40;
 		public var white_tone:uint = 0xff7f7f7f;
-		public var _DONE_EVENT:Event =  new Event("CALLIBRATE_DONE", true)
+		public var _DONE_EVENT_STRING:String = "CALLIBRATE_DONE";
+		public var _DONE_EVENT:Event =  new Event(_DONE_EVENT_STRING, true)
 
 		
 		

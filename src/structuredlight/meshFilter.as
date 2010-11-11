@@ -2,6 +2,8 @@ package structuredlight
 {
 	import com.nodename.Delaunay.Voronoi;
 	
+	import flash.events.Event;
+	import flash.events.EventDispatcher;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 
@@ -10,15 +12,19 @@ package structuredlight
 	
 	*/
 	
-	public class meshFilter
+	public class meshFilter extends EventDispatcher
 	{
 		public var proj_map:ProjectorMap ;
-	
+		public var DONE_EVENT:String = "BAD TRIANGLES DONE";
+		
 		public function meshFilter( proj_map_:ProjectorMap )
 		{
 			proj_map = proj_map_ ;
 		}
-				
+		public function sendEvent():void
+		{
+			this.dispatchEvent( new Event( DONE_EVENT, true) );
+		}
 		
 		////GET RID OF BAD COORDINATES BY SIDE LENGTH
 		// 		 This function throws away point with lines connecting longer than 2 standard deviations from the average.
@@ -168,6 +174,7 @@ package structuredlight
 				var good:Vector.<Point> = goodCamTriangles();
 				proj_map.triad = new Voronoi( good, null , new Rectangle(0,0, proj_map.rev_map.width(), proj_map.rev_map.height() ) )			;
 				proj_map.mypoints = good;
+				sendEvent();
 			}
 				//proj_map.interpolate( _denoise.selected , _percentPoints.value );
 		}
@@ -178,6 +185,7 @@ package structuredlight
 				var good:Vector.<Point> = goodTrianglesbyAngle( lowAngle);
 				proj_map.triad = new Voronoi( good, null , new Rectangle(0,0, proj_map.rev_map.width(), proj_map.rev_map.height() ) )	;
 				proj_map.mypoints = good;
+				sendEvent();
 			}
 		}
 		

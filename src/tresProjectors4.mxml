@@ -153,6 +153,7 @@
 			
 			public function stitch():Displacement24
 			{
+				makeChangesPermanent();
 				
 				var w:int = mp.sbList[0].graymap._screen_width;
 				var h:int = mp.sbList[0].graymap._screen_height;
@@ -375,30 +376,61 @@
 			}*/
 			
 			
-			function stitchUVMeshes2()
+			//
+			//
+			// MAKE CAHNGES PERAMNENT.
+			//   this essentially saves the changes that were made by removing bad triangles from the tangled mesh. 
+			//
+			//   usage: Run this after you have cleaned up the to the mesh. 
+			//
+			//    note: this is kind of slow so you don't need to run it after every change but definatly before saving a mesh or a displacement image
+			//
+			function makeChangesPermanent()
 			{
-				var sb1:Sandbox3 = mp.sbList[0];
 				
-				
-				var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
-				bigProjMap.proj_map = new Array();
-				
-				var scrWid:int = 0 ;
-				var numOfProjs:int = projMap_list.length;
+				//  make changes to all of the maps 
+				//
 				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
 				{
 					var current_pm1:ProjectorMap = projMap_list[ pn] ;
 					current_pm1.triangulation();
 					current_pm1.fillIn();
-					scrWid = current_pm1.width();
 				}
 				
+			}
+			
+			
+			//
+			//
+			//  STITCH ALL  OF THE PROJECTOR MAPS TOGETHER INT ONE
+			//			What does it do?   It takes a slice of each projector map od size 1/n. and puts them together to make one map.
+			//          The resulting map should be the same dimensions as the individual projector maps. 
+			//			
+			//
+			function stitchUVMeshes2()
+			{
+				var sb1:Sandbox3 = mp.sbList[0];
+				var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
+				bigProjMap.proj_map = new Array();
+				
+				var numOfProjs:int = projMap_list.length;
+				
+				//save previous changes to projector maps
+				makeChangesPermanent();
+				
+				//get width
+				var current_pm1:ProjectorMap = projMap_list[ 0] ;
+				var scrWid:int  = current_pm1.width();
+				var scrHeight:int = current_pm1.height();
+				//
+				// Take a slice out of every projector map and put them into one map
 				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
 				{
 					var current_pm:ProjectorMap = projMap_list[ pn] ;
 					var section:Array = current_pm.proj_map.slice( Math.round( pn * scrWid / numOfProjs) ,  Math.round( (pn +1)*( scrWid / numOfProjs) )  );  
 					bigProjMap.proj_map = bigProjMap.proj_map.concat( section );
 				}
+				
 				_log.text += "# of projectors : " + numOfProjs +  "   individual proj map width  : " + scrWid + " \n"
 				_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
 			
@@ -407,8 +439,11 @@
 					_log.text += " ERROR in stitchmesh :   indiividual map size does not equal final stitched map size. my bad" ;
 				}
 				
+				//
+				// Output the mesh to a file
+				//
 				var PBM:BourkeMesh = new BourkeMesh();
-				PBM.projMapToBourkeMesh( bigProjMap );
+				PBM.projMapToBourkeMesh( bigProjMap, scrWid / 16 , scrHeight / 16 );
 				PBM.saveQuartzMesh();
 				_img.source new Bitmap( PBM.displayMesh() );
 			}
@@ -430,6 +465,101 @@
 				
 			}
 			
+			//
+			
+			
+			
+			//  TESTING 1,2 , ,1,2
+			//
+			//  FIND OVERLAPPING REGIONS
+			//
+			function getOverlaps()
+			{
+				//
+				//  first stitch 3 projectors together
+				//    note this is duplicated code from stitchUvMeshes2
+				//
+				//
+				var sb1:Sandbox3 = mp.sbList[0];
+				var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
+				bigProjMap.proj_map = new Array();
+				
+				var numOfProjs:int = projMap_list.length;
+				
+				//save previous changes to projector maps
+				makeChangesPermanent();
+				
+				//get width
+				var current_pm1:ProjectorMap = projMap_list[ 0] ;
+				var scrWid:int  = current_pm1.width();
+				var scrHeight:int = current_pm1.height();
+				//
+				// Take a slice out of every projector map and put them into one map
+				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+				{
+					var current_pm:ProjectorMap = projMap_list[ pn] ;
+					var section:Array = current_pm.proj_map.slice( Math.round( pn * scrWid / numOfProjs) ,  Math.round( (pn +1)*( scrWid / numOfProjs) )  );  
+					bigProjMap.proj_map = bigProjMap.proj_map.concat( section );
+				}
+				
+				_log.text += "# of projectors : " + numOfProjs +  "   individual proj map width  : " + scrWid + " \n"
+				_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
+				
+				if( scrWid != bigProjMap.width() )
+				{
+					_log.text += " ERROR in stitchmesh :   indiividual map size does not equal final stitched map size. my bad" ;
+				}
+				
+				
+				// 
+				//  get overlapping regions
+				//
+				//
+				
+				// initialise new array to hold overlaps
+				//     
+				var overlaps:Array = new Array( bigProjMap.width() );
+				
+				for( var w:int = 0 ; w < scrWid; w++)
+				{
+					overlaps[ w] = new Array( scrHeight );
+					for( var h:int = 0 ; h < scrHeight; h++)
+					{
+						overlaps[w][h] = new Array;
+					}
+				}
+				
+				//   populate new Array
+				//
+				for( var x:int = 0 ; x < bigProjMap.width(); x++)
+				{
+					for( var y:int = 0 ; y < bigProjMap.height(); y++)
+					{
+						var pp:Point = bigProjMap.getProjXY( x,y);
+						if( pp.x > 0 && pp.x < scrWid   &&   pp.y > 0 && pp.y < scrHeight)
+						{
+								overlaps[pp.x][ pp.y].push( new Point(x,y) );
+						}
+					}
+				}
+				
+				//
+				// MAKE DISPLACEMENT MAPS WITH OPACTITY
+				//
+				var d16:Displacement24 = new Displacement24();
+				d16.fromProjectorMap( bigProjMap );
+				
+				
+				
+				
+				
+				
+			}
+			
+				
+				
+				
+			
 		]]>
 	</fx:Script>
 	
@@ -437,8 +567,8 @@
 	<mx:Image x="0" y="0" id="_img"/>	
 	<s:TextArea x="713" y="25" width="283" id="_log" />
 	<mx:Image x="0" y="0" id="_img2"/>
-	<mx:TabNavigator x="30" y="10" width="676" height="564">
-		<s:NavigatorContent label="select camera" width="100%" height="100%">
+	<mx:TabNavigator x="30" y="10" width="676" height="564"  contentBackgroundAlpha="0.0" contentBackgroundColor="#989898">
+		<s:NavigatorContent label="select camera" width="100%" height="100%" contentBackgroundAlpha="0.0" backgroundAlpha="0.0">
 			<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
 			<mx:VideoDisplay width="320" height="240" 
 							 id="vidDisp" 
@@ -473,7 +603,7 @@
 			<s:Label x="9" y="211" text="Post callibration stuff" textDecoration="underline" fontSize="20" fontWeight="bold"/>
 		
 		</s:NavigatorContent>
-		<s:NavigatorContent label="interpolation" width="100%" height="100%">
+		<s:NavigatorContent label="interpolation" width="100%" height="100%" backgroundAlpha="0.0">
 			<s:Label x="10" y="60" text="percent points to keep"/>
 			<s:HSlider x="10" y="74" id="_pointsKept" minimum="0.0" maximum="1.0" stepSize="0.05" value="0.8"/>
 			<s:Button x="11" y="88" label="interpolate All" click="interpallHandler()"/>
@@ -487,7 +617,7 @@
 			<s:Button x="10" y="78" label="remove skinny triangles" click="removeSkinnyTriangles()"/>
 			<s:Button x="10" y="107" label="remove really long triangles" click="removeLongTriangles()"/>
 		</s:NavigatorContent>
-		<s:NavigatorContent label="save displacement maps" width="100%" height="100%" backgroundAlpha="0.5">
+		<s:NavigatorContent label="save displacement maps" width="100%" height="100%" backgroundAlpha="1.0">
 			<s:Button x="10" y="57" label="save X Displacement" click="imageSave('x') " />
 			<s:Button x="150" y="58" label="save Y Displacement" click="imageSave('y') "/>
 			<s:Label x="10" y="19" text="Save both of these images." fontSize="17" fontWeight="bold"/>

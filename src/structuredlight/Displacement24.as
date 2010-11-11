@@ -33,6 +33,7 @@ package structuredlight
 	import flash.display.Shader;
 	import flash.display.Shape;
 	import flash.events.Event;
+	import flash.events.EventDispatcher;
 	import flash.filters.ShaderFilter;
 	import flash.geom.Point;
 	import flash.net.URLLoader;
@@ -42,7 +43,7 @@ package structuredlight
 	import structuredlight.CameraProjecterMap2;
 	import structuredlight.ProjectorMap;
 
-	public class Displacement24
+	public class Displacement24 extends EventDispatcher
 	{
 		private var ldr:URLLoader;
 	
@@ -57,6 +58,7 @@ package structuredlight
 		public var offsetY:Number = 0.0;
 		public var zoom:Number = 1.0;
 		
+		public var READY_EVENT:String = "D24 READY";
 		//load the pixel bender kernel
 		//[Embed(source="displ24goodzoom.pbj", mimeType="application/octet-stream")]
 		[Embed(source="displ24test.pbj" , mimeType="application/octet-stream")]
@@ -102,6 +104,7 @@ package structuredlight
 			shader.data.zoom.value = [ zoom];
 			
 			filter = new ShaderFilter( shader);
+			this.dispatchEvent( new Event( READY_EVENT) );
 		}
 		
 		public function fromCamProjMap( cam_map:CameraProjecterMap2 ):ShaderFilter

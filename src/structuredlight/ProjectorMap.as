@@ -370,36 +370,7 @@ package structuredlight
 			return result;
 		}
 		
-		/*
-		public function putImageOnCam_map( img:BitmapData, wid:int = 640, hei:int = 480):BitmapData
-		{
-
-			var result:BitmapData = new BitmapData( cam_map.width(), cam_map.height(), false, 0x009900)
-			//
-			//scaled image
-			var scaled:BitmapData = new BitmapData( 640,480)//width()/ img.width, height()/img.height)
-			var mtrx:Matrix = new Matrix( cam_map.width() / img.width, 0,0, cam_map.height() / img.height )
-			scaled.draw( img,mtrx)
-			//return scaled
-			
-			for( var x:int=0; x< cam_map.width();x++) 
-			{
-				for( var y:int=0; y< cam_map.height(); y++)
-				{
-					if( cam_map.getMapXY(x,y) )
-					{						
-						var p:Point = cam_map.getMapXY(x,y)
-						var pixel:uint = scaled.getPixel( x,y)
-						result.setPixel( p.x,p.y, pixel)
-						
-					}
-				}
-			}
-			return result
-		}
-		*/
-		
-
+	
 		//
 		// IMAGE DISPLAY FUNCTIONS
 		//		some of these are for debugging, but others may be functional
@@ -413,94 +384,7 @@ package structuredlight
 		{	
 			return cam_map.makeGrayArrayImage() ;
 		}
-		/*
-		public function drawProj_map16( ):Array
-		{
-					
-			var resultX:BitmapData = new BitmapData( this.width(), this.height(), true, 0x00000000 )
-			var resultY:BitmapData = new BitmapData(this.width(), this.height(), true, 0x00000000)
-			for( var xr:int; xr < this.width(); xr++)
-			{					
-				for( var yr:int = 0; yr < this.height() ; yr++)
-				{
-					if( proj_map[xr][yr].x >= 0 && proj_map[xr][yr].y >=0)
-					{ 	
-						//ATTEMPT 3
-						//   MAKE TWO displacement IMAGES . ONE FOR X DISPLACEMENT. ONE FOR Y.
-						
-						var distX:int =  proj_map[xr][yr].x - xr;
-						var distY:int =  proj_map[xr][yr].y - yr ;
-						
-						var ax:int = distX / 128;
-						ax = ax + 128;
-						var rx:int = distX % 128;
-						rx = rx + 128;
-						
-						var ay:int = distY / 128;
-						ay = ay + 128;
-						var ry:int = distY % 128;
-						ry = ry + 128;
-						
-						var pixvalX:uint = ( ax << 24 | rx << 16);
-						var pixvalY:uint = ( ay << 24 | ry << 16);
-						
-						
-						resultX.setPixel32(xr, yr,  pixvalX);
-						resultY.setPixel32(xr, yr, pixvalY);
-					}
-				}
-			}
-			
-			return [resultX, resultY]
-		}
-		
-		public function drawProj_map():BitmapData
-		{
-			var scale:Number = 128 / width()
-			if( height() >  width())
-				scale = 128 / height()
-					
-			//scale= 1//testing it
-					
-			var bm2:BitmapData = new BitmapData( proj_map.length, proj_map[0].length)
-			for( var x:int=0; x < proj_map.length; x++)
-			{
-				for( var y:int = 0; y< proj_map[0].length; y++)
-				{
-					if(proj_map[x][y])
-					{
-						var pixval:uint =uint( (((proj_map[x][y].x - x) * scale + 128) << 16)  |   (((proj_map[x][y].y - y) * scale + 128) << 8))
-						bm2.setPixel(x, y,  pixval  )
-					}
-				}
-			}
-			return bm2
-		}
-		*/
-		/*
-		public function draw_inter_cam_map():BitmapData
-		{
-			if( ! cam_map_interpolated)
-			{
-				interpolated_cam_map()
-			}
-			var bmd2:BitmapData = new BitmapData( cam_map_interpolated.length, cam_map_interpolated[0].length)
-			
-			for( var x:int=0; x< cam_map_interpolated.length; x++)
-			{
-				for( var y:int=0; y< cam_map_interpolated[0].length; y++)
-				{
-					if( cam_map_interpolated[x][y])
-					{
-						var pixval:uint = uint( (cam_map_interpolated[x][y].length * 25 << 16 | cam_map_interpolated[x][y][0].x /2 ) << 8 | (cam_map_interpolated[x][y][0].y /2) )  
-						bmd2.setPixel(x, y,  pixval  )
-					}
-				}
-			}
-			
-			return bmd2
-		}
-		*/
+
 		
 		//
 		//  DRAW TRIANGLES

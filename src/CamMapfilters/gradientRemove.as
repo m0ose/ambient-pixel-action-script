@@ -11,18 +11,21 @@
 package CamMapfilters
 {
 	import flash.display.BitmapData;
+	import flash.events.Event;
+	import flash.events.EventDispatcher;
 	import flash.geom.Point;
 	
 	import structuredlight.CameraProjecterMap2;
 
 	
-	public class gradientRemove
+	public class gradientRemove extends EventDispatcher
 	{
 		public function gradientRemove()
 		{
 				
 		}
 		public var _log:String = "";
+		public var DONE_EVENT:String="BAD GRADIENT REMOVE DONE";
 		
 		/*
 		This takes a camera projector map2
@@ -48,6 +51,8 @@ package CamMapfilters
 					}
 				}
 			}
+			this.dispatchEvent( new Event( DONE_EVENT, true));
+			
 			return result;
 		}
 	

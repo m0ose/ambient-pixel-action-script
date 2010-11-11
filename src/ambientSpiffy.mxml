@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import CamMapfilters.gradientRemove;
+			
+			import flash.media.Camera;
+			import flash.media.Video;
+			
+			import mx.collections.ArrayCollection;
+			
+			import structuredlight.*;
+			
+		
+			public var cam:Camera;
+			public var sandBox:Sandbox3 ;
+			public var proj_map:ProjectorMap;
+			public var dispMap24:Displacement24;
+	
+			public var cam_resolutions:ArrayCollection = new ArrayCollection(
+				[ {label:"640 x 480", width:640, height:480}, 
+					{label:"320 x 240", width:320, height:240}, 
+					{label:"160 x 120", width:160, height:120}
+				]
+			);
+			
+			
+			public function load_camera(e:Event=null):void
+			{
+				cam = Camera.getCamera( camlist.selectedIndex.toString() )
+				
+				var wid:int = 620;
+				var hei:int = 480;
+				if(resolution_form){
+					wid = resolution_form.selectedItem.width;
+					hei = resolution_form.selectedItem.height;
+					cam.setMode( wid, hei, 60);
+					_vid.width = wid;
+					_vid.height = hei;
+				}
+			    if( cam){
+					_vid.attachCamera( cam);
+				}
+			}
+			
+			//
+			//  
+			//
+			var timeout:uint = 300;
+			var color:uint = 0xdddddd ;
+			var threshHold:uint = 9 ;
+			var coarse:int = 8 ;
+			
+			function formChange()
+			{
+				var timeout:uint = _timeout.value;
+				var color:uint = _color.value * 0x010101 ;
+				var threshHold:uint = _thresh_hold.value;
+				var coarse:int = Math.pow( 2,  _coarsness.value) ;
+			}
+			function startScan()
+			{
+			    _tabs.selectedIndex = 1;
+				
+				
+				sandBox = new Sandbox3( stage, cam, int(stage.width / coarse) , int(stage.height / coarse ));
+				sandBox.thresh_hold = threshHold;
+				sandBox.white_tone = color;
+				sandBox.state_rate= sandBox.TPTimeout = timeout;
+				
+				sandBox.callibrate();
+				
+				
+				
+				sandBox.addEventListener( sandBox._DONE_EVENT_STRING, scanDone); //doesn't work
+				_log.text += " start scan ";
+
+			}
+			
+			function scanDone( e:Event)
+			{
+				e.target.removeEventListener( e.type, arguments.callee );
+
+				_tabs.selectedIndex = 2;//display tab
+				//clean up bad gradient
+			
+				
+				var grad:gradientRemove = new gradientRemove();
+				grad.addEventListener( String(grad.DONE_EVENT), badGradDone );
+				sandBox.graymap = grad.removeBadGradient( sandBox.graymap);
+			
+				//setTimeout( badGradDone, 3000);
+				_log.text += " scanDone " + e.type;
+			}
+			function badGradDone(e:Event = null)
+			{
+				_tabs.selectedIndex = 0;
+				e.target.removeEventListener( e.type, arguments.callee );
+
+				_img.source = new Bitmap( sandBox.graymap.makeGrayArrayImage() );
+				
+				//interpolate
+				//
+				proj_map = new ProjectorMap( sandBox.graymap );
+				proj_map.addEventListener( proj_map.DONE_EVENT_STRING, interpolateDone );	
+				proj_map.interpolate(  );
+				
+				_log.text += " bad grad done " + e.type;
+
+			}
+			function interpolateDone(e:Event)
+			{
+				_log.text += " interpolate done " + e.type;
+				e.target.removeEventListener( e.type, arguments.callee );
+				
+				var pmf:meshFilter = new meshFilter( proj_map);
+				pmf.removeBadBySideLength();	
+				pmf.addEventListener( pmf.DONE_EVENT, trianglesDone);	
+				pmf.removeBadByAngle();
+
+			}
+			function trianglesDone( e:Event)
+			{
+				_log.text += " interpolate done " + e.type;
+				e.target.removeEventListener( e.type, arguments.callee );
+				//
+				//make changesPermanent
+				makeChangesPermanent();
+				//
+				// make d24
+				dispMap24 = new Displacement24( );
+				dispMap24.addEventListener( dispMap24.READY_EVENT, displayImage );
+				dispMap24.fromProjectorMap( proj_map);
+			
+			}
+			public function displayImage(e:Event)
+			{
+				_log.text += " displacement map ready  " + e.type;
+
+				e.target.removeEventListener( e.type, arguments.callee );
+
+			}
+			
+			function makeChangesPermanent()
+			{
+					
+			proj_map.triangulation();
+			proj_map.fillIn();
+					
+			}
+				
+		]]>
+	</fx:Script>
+	
+	
+	
+	
+	<mx:TabNavigator x="10" y="10" width="95%" height="95%" id="_tabs" >
+		<s:NavigatorContent label="SELECT CAMERA" width="100%" height="100%">
+			<mx:VideoDisplay width="320" height="240" 
+							 id="_vid" 
+							 visible="true"
+							 creationComplete="load_camera( event)"  x="337" y="10" contentBackgroundAlpha="1.0"/>
+			<mx:ComboBox id="camlist"
+						 dataProvider="{Camera.names}"
+						 width="200"	
+						 selectedIndex="1" 
+						 change="load_camera(event)"
+						 x="34" y="31"/>
+			<s:ComboBox width="197" dataProvider="{cam_resolutions}" selectedIndex="0" id="resolution_form" change="load_camera(event)" x="36" y="58" visible="false"/>
+
+			<s:Label x="10" y="10" text="Step 1: Choose Camera : " fontSize="20"/>
+			<s:Label x="10" y="165" text="Step 2:  press SPACE to start scan." fontSize="20"/>
+			<s:Button x="51" y="198" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="SCAN     " width="100%" height="100%">
+			<mx:TabNavigator x="0" y="0" width="95%" height="95%">
+				<s:NavigatorContent label=" easy " width="100%" height="100%">
+					<s:Button x="5" y="34" label="scan" width="194" height="40" click="startScan()"/>
+					<mx:Image x="233" y="38" id="_img"/>
+				</s:NavigatorContent>
+				<s:NavigatorContent label=" advanced" width="100%" height="100%">
+					<s:Button x="10" y="263" label="SCAN" click="startScan()" width="188" height="60"/>
+					<mx:Form x="2" y="-3" width="686" height="239" >
+						<s:Label text="threshold" width="59" />
+						<s:HSlider minimum="0" maximum="255" stepSize="1" value="7" id="_thresh_hold"  width="391" change="formChange()"/>
+						<s:Label text="gray color" height="11"/>
+						<s:HSlider id="_color" minimum="0" maximum="255" value="228" stepSize="1" width="382" change="formChange()"/>
+						<s:Label text="time to change states"/>
+						<s:HSlider id="_timeout" minimum="200" maximum="3000" stepSize="100" value="400" change="formChange()"/>
+						<s:Label text="coarsness"/>
+						<s:Label text="8" id="_coarsness_label" width="57"/>
+						<s:HSlider minimum="0" change="_coarsness_label.text=(Math.pow( 2,  _coarsness.value) ).toString() ; formChange()" id="_coarsness" maximum="10" stepSize="1" value="3"/>
+					</mx:Form>
+				</s:NavigatorContent>
+			</mx:TabNavigator>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="DISPLAY" width="100%" height="100%">
+			<mx:LinkButton x="10" y="10" label="LinkButton"/>
+			<mx:LinkButton x="10" y="28" label="LinkButton"/>
+			<mx:LinkButton x="10" y="46" label="LinkButton"/>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+	<s:TextArea x="397" y="10" width="195" height="163" id="_log"/>
+</s:Application>
