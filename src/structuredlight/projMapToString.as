@@ -41,7 +41,7 @@ package structuredlight
 		-0.84375 0.9583333333333334 0.7109375 0.55625 1
 		... and so and and so forth ...
 		*/ 
-		public function MakeUVMap4Quartz( xdivisions:int = 64, ydivisions:int = 48):String
+		/*public function MakeUVMap4Quartz( xdivisions:int = 64, ydivisions:int = 48):String
 		{
 			var result:String = "2 \n";
 			// todo figure out resolution automatically
@@ -71,6 +71,13 @@ package structuredlight
 						u = v = -1000;
 						i = -1 ;
 					}
+					
+					//
+					// need to put opacity for boarders
+					//
+				
+					
+					
 					//the output for the quartz PBMesh plugin is inverted. 
 					//result += x + " " + y + " " + u + " " + v + " " + i + "\n";
 					// the repaired version is below
@@ -83,8 +90,88 @@ package structuredlight
 			}
 			return result;
 		}
-		
+		*/
 	
+		//
+		//
+		//  this version of the functions should handle the borders better
+		//
+			
+		public function MakeUVMap4Quartz( xdivisions:int = 64, ydivisions:int = 48):String
+		{
+			var result:String = "2 \n";
+			// todo figure out resolution automatically
+			//var xdivisions:int = 64 ; 
+			//var ydivisions:int = 48 ;
+			
+			result += int(xdivisions + 1) + " " + int(ydivisions + 1) + "\n";
+			var nodes:Array = new Array( ydivisions +1);
+			for( var yn:Number = 0 ; yn <= ydivisions; yn++)
+			{
+				nodes[ yn] = new Array( xdivisions + 1);
+			}
+			
+			for( var yn:Number = 0 ; yn <= ydivisions; yn++)
+			{
+				for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
+				{
+					var x:Number = 2 * ( xn / xdivisions ) - 1 ;
+					var y:Number = 2 * ( yn / ydivisions ) - 1;
+					var xm:int = Math.floor( proj_map.width()  * (x+1)/2 );
+					var ym:int = Math.floor( proj_map.height() * (y+1)/2 );
+					var u:Number = proj_map.getProjXY( xm, ym ).x;
+					var v:Number = proj_map.getProjXY( xm, ym ).y;
+					var i:Number = 1 ; 
+					if( u >=0 && v >=0 )
+					{
+						u =  u / proj_map.cam_map._screen_width ;
+						v =  v / proj_map.cam_map._screen_height ;
+					}
+					else
+					{
+						u = v = -1000;
+						i = -1 ;
+					}
+					//push an object on
+					nodes[yn][xn] = { x:x , y:y , u:u , v:v ,i:i}; 
+
+					
+				}
+			}
+			for( var yn:Number = 0 ; yn <= ydivisions; yn++)
+			{
+				for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
+				{
+					var tmpObj:Object = nodes[yn][xn];
+					//
+					//
+					//  handle the border issues 
+					//       make all borders translucent
+					//       
+					//    
+					var i = Number(tmpObj.i);
+					if( xn == 0 || yn == 0)
+						i = 0;
+					else if( xn == xdivisions || yn == ydivisions)
+						i = 0;
+					else if( nodes[yn][xn-1].i <= 0 )
+						i = 0;
+					else if( nodes[yn][xn+1].i <= 0 )
+						i = 0;
+					else if( nodes[yn-1][xn].i <= 0 )
+						i = 0;
+					else if( nodes[yn+1][xn].i <= 0 )
+						i = 0;
+					
+					
+					//
+					//  finally outputto the final string
+					//
+					result += tmpObj.x + " " + -1 * tmpObj.y + " " + ( tmpObj.u ).toString() + " " + (1- tmpObj.v ).toString() + " " + i + "\n";					
+				}
+			}
+			return result;
+		}
 		
 
 	}
