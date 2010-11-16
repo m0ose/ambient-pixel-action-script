@@ -1,6 +1,6 @@
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" xmlns:ns1="*">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
@@ -34,14 +34,16 @@
 				[ {label:"640 x 480", width:640, height:480}, 
 					{label:"320 x 240", width:320, height:240}, 
 					{label:"160 x 120", width:160, height:120}
-					]
+				]
 			)
 			
 			
 			public function load_camera(e:Event=null):void
 			{
+				//cam = _camDisp.camera;
+				/*
 				cam = Camera.getCamera( camlist.selectedIndex.toString() )
-				
+				/*
 				var wid:int = 320
 				var hei:int = 240
 				if(resolution_form){
@@ -52,6 +54,7 @@
 					vidDisp.height = cam.height
 				}
 				vidDisp.attachCamera( cam)
+					*/
 			}
 			public function tryBMD():void
 			{
@@ -67,7 +70,7 @@
 				if(cam)
 				{
 					bmd = new BitmapData( 2 * cam.width, 2 * cam.height, false, 0x00ff00)//cam.width,cam.height)		//bmd.draw( vidDisp)
-					bmd.draw( vidDisp)
+					//bmd.draw( _camDis)
 					//imgDisp.source = new Bitmap( bmd)	
 				}
 			}
@@ -75,7 +78,7 @@
 			//structured light section
 			public function structuredLight_init(state_rate2:int = 300, TPtimeout2:int = 300 , thresh_hold:int = 30, tone:int = 128):void
 			{
-				sb= new Sandbox3( stage, cam, int(stage.width / scan_divisor) , int(stage.height / scan_divisor ));
+				sb= new Sandbox3( stage, _camDisp.camera, int(stage.width / scan_divisor) , int(stage.height / scan_divisor ));
 				sb.thresh_hold = thresh_hold ;
 				sb.white_tone = 0xff000000 + tone *  0x010101;
 				//this is nice but it leaves a "press esacape to exit" message on too long
@@ -201,7 +204,7 @@
 				if(cam)
 				{
 					//bmd = new BitmapData(cam.width, cam.height, false, 0x00ff00)//cam.width,cam.height)		//bmd.draw( vidDisp)
-					bmd.draw( vidDisp)
+					//bmd.draw( vidDisp)
 					structuredImage.source = new Bitmap( rev_map.attachImage( bmd))
 				}
 				
@@ -248,7 +251,7 @@
 				var gradF:gradientRemove= new gradientRemove();
 				sb.graymap = gradF.removeBadGradient( sb.graymap);
 			}
-
+			
 			
 			
 		]]>
@@ -259,22 +262,11 @@
 	
 	<mx:Accordion x="7.7" y="48.35" width="861" height="552">
 		<s:NavigatorContent label="video" width="100%" height="100%">
-			<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
-			<mx:VideoDisplay width="320" height="240" 
-							 id="vidDisp" 
-							 visible="true"
-							 creationComplete="load_camera( event)"  x="10" y="37"/>
-			<mx:Text text="Choose a camera. there are {camlist.dataProvider.length} camera(s)"  x="14" y="14"/>
 			<mx:Form x="383" y="23" width="310" height="208">
 				
-				<mx:ComboBox id="camlist"
-							 dataProvider="{Camera.names}"
-							 width="200"	
-							 selectedIndex="1" 
-							 change="load_camera(event)"
-							 x="408" y="39"/>
-				<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="1" id="resolution_form" x="408" y="65"  change="load_camera(event)"/>
 			</mx:Form>
+			<ns1:camDisplay x="36" y="10" id="_camDisp">
+			</ns1:camDisplay>
 		</s:NavigatorContent>
 		<s:NavigatorContent label="current bitmap test" width="100%" height="100%">
 			<mx:Image x="6.3" y="11.65"  id="imgDisp"/>

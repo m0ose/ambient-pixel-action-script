@@ -177,7 +177,7 @@ package structuredlight
 						var yc:int = Math.floor( n/width);
 						
 						var drawPoint:Boolean = true;
-						// DONT DRAW THE CORNERS. THEY WILL GET DRAWN BY THE NEIGHBORS. 
+						// DONT DRAW THE CORNERS or EDGES. THEY WILL GET DRAWN BY THE NEIGHBORS. 
 						if( yc <= 0 || yc == height - 1 || xc <= 0 ||  xc == width - 1)//right
 						{		
 							drawPoint = false;
@@ -198,7 +198,19 @@ package structuredlight
 							//
 							// draw xy map
 							//
-							sh1.graphics.lineStyle(1,0x00ff00);
+							if( Number(m[2]) < 0 && Number(m[3]) < 0 && Number(m[4]) < 0)
+								sh1.graphics.lineStyle(3,0xaaffaa);
+							else if( Number(left[2]) < 0 && Number(left[3]) < 0 && Number(left[4]) < 0 )
+								sh1.graphics.lineStyle(2,0xaaff00);
+							else if( Number(right[2]) < 0 && Number(right[3]) < 0 && Number(right[4]) < 0 )
+								sh1.graphics.lineStyle(2,0xaaff11);
+							else if( Number(up[2]) < 0 && Number(up[3]) < 0 && Number(up[4]) < 0 )
+								sh1.graphics.lineStyle(2,0xaaff22);
+							else if( Number(down[2]) < 0 && Number(down[3]) < 0 && Number(down[4]) < 0 )
+								sh1.graphics.lineStyle(2,0xaaff33);
+							else
+								sh1.graphics.lineStyle(1,0x00fd00);
+
 							//up
 							sh1.graphics.moveTo( bmd.width * (Number( m[0] ) + 1)/2 , bmd.height * (Number( m[1] ) + 1)/2); 
 							sh1.graphics.lineTo( bmd.width * (Number( up[0] ) + 1)/2 , bmd.height * (Number( up[1] ) + 1)/2);

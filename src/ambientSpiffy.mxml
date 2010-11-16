@@ -2,7 +2,7 @@
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
 			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600"
-			   applicationComplete="watchKeyboard()">
+			   applicationComplete="watchKeyboard();" xmlns:ns1="*">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
@@ -25,33 +25,12 @@
 			public var dispMap24:Displacement24;
 			public var _states:Array=["camera", "scanning", "displaying","idle"];
 			public var state:int = 0;
-			
-			public var cam_resolutions:ArrayCollection = new ArrayCollection(
-				[ {label:"640 x 480", width:640, height:480}, 
-					{label:"320 x 240", width:320, height:240}, 
-					{label:"160 x 120", width:160, height:120}
-				]
-			);
+			public var tmpVid:Video;//this is used to hold the video being displayed. it is for a bug work around.
 			
 			
-			public function load_camera(e:Event=null):void
-			{
-				cam = Camera.getCamera( camlist.selectedIndex.toString() )
-				
-				var wid:int = 620;
-				var hei:int = 480;
-				if(resolution_form){
-					wid = resolution_form.selectedItem.width;
-					hei = resolution_form.selectedItem.height;
-					cam.setMode( wid, hei, 60);
-					_vid.width = wid;
-					_vid.height = hei;
-				}
-			    if( cam){
-					_vid.attachCamera( cam);
-				}
-			}
 			
+			
+		
 			//
 			//  
 			//
@@ -80,25 +59,23 @@
 			}
 			private function keyPressed(e:KeyboardEvent):void
 			{
-			/*	trace("Key Released: " + String.fromCharCode(event.charCode) +         " (key code: " + event.keyCode + " character code: " +         event.charCode + ")");
-				if (event.keyCode == Keyboard.SHIFT)
-				{
-					tf.borderColor = 0x000000;
-				}
-			*/
+
 			   _log.text += e.keyCode + " pressed      " ;
 				if( e.keyCode == Keyboard.ENTER || e.keyCode == Keyboard.SPACE)
 				{
 					if( state != _states.indexOf("scanning") )
 					{
 						startScan();	
+					
 					}
 				}
+				//escape exits dispolay
 				if( state == _states.indexOf("displaying") )
 				{
 					if( e.keyCode == Keyboard.ESCAPE)
 					{
 						dropUpImage();
+						
 					}
 					
 				}
@@ -123,7 +100,7 @@
 			    _tabs.selectedIndex = 1;
 				
 				
-				sandBox = new Sandbox3( stage, cam, int(stage.width / coarse) , int(stage.height / coarse ));
+				sandBox = new Sandbox3( stage, _camDisp.camera, int(stage.width / coarse) , int(stage.height / coarse ));
 				sandBox.thresh_hold = threshHold;
 				sandBox.white_tone = color;
 				sandBox.state_rate= sandBox.TPTimeout = timeout;
@@ -185,8 +162,12 @@
 			}
 			public function removeTriangles():void
 			{
+				//
+				//this function is realy stupid
+				//   it should be smarter. 
 				var pmf:meshFilter = new meshFilter( proj_map);
 				pmf.removeBadBySideLength();	
+				pmf.removeBadByAngle();
 				pmf.addEventListener( pmf.DONE_EVENT, trianglesDone);	
 				pmf.removeBadByAngle();
 
@@ -222,11 +203,14 @@
 
 			public function displayImage():void
 			{
+				dropUp();
 				cleanUp();
 				_log.text += " DISPLAYING IMAGE"; 	
 				//dropUp();
-				dropImage();
+				
 				d24Image();
+				dropImage();
+				
 				
 			}
 			public function cleanUp():void
@@ -271,7 +255,13 @@
 				_progress.visible= false;
 			}
 			public function dropImage():void
-			{
+			{		
+				_imgBig.scaleContent = false;
+				_imgBig.width = stage.width;
+				_imgBig.height = stage.height;
+		
+				
+				
 				_imgDrop.visible =true;
 				_imgBig.visible = true;
 			}
@@ -279,6 +269,9 @@
 			{
 				_imgDrop.visible = false;
 				_imgBig.visible = false;
+				_imgBig.scaleContent = true;
+				_imgBig.width = 0;
+				_imgBig.height = 0;
 				unInitMouse();
 				state = _states.indexOf("idle");
 			}
@@ -308,6 +301,7 @@
 					dimensions.width = dispMap24.mapX.width;
 				if( dispMap24.mapX.height > dimensions.height )
 					dimensions.height = dispMap24.mapX.height;
+				
 				
 				var bmd:BitmapData = new BitmapData( dimensions.width, dimensions.height , false);
 				bmd.draw(bm);
@@ -412,22 +406,13 @@
 	
 	<mx:TabNavigator x="10" y="10" width="95%" height="95%" id="_tabs" >
 		<s:NavigatorContent label="SELECT CAMERA" width="100%" height="100%">
-			<mx:VideoDisplay width="320" height="240" 
-							 id="_vid" 
-							 visible="true"
-							 creationComplete="load_camera( event)"  x="337" y="10" contentBackgroundAlpha="1.0"/>
-			<mx:ComboBox id="camlist"
-						 dataProvider="{Camera.names}"
-						 width="200"	
-						 selectedIndex="1" 
-						 change="load_camera(event)"
-						 x="34" y="31"/>
-			<s:ComboBox width="197" dataProvider="{cam_resolutions}" selectedIndex="0" id="resolution_form" change="load_camera(event)" x="36" y="58" visible="false"/>
 
 			<s:Label x="10" y="10" text="Step 1: Choose Camera : " fontSize="20"/>
 			<s:Label x="10" y="165" text="Step 3:  press SPACE to start scan." fontSize="20"/>
 			<s:Button x="51" y="198" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
 			<s:Label x="10" y="82" text="Step 2: Point camera at screen or Image from Projector" height="44" fontSize="20" width="326"/>
+			<ns1:camDisplay x="337" y="10" id="_camDisp">
+			</ns1:camDisplay>
 		</s:NavigatorContent>
 		<s:NavigatorContent label="options" width="100%" height="100%">
 			<mx:Image x="10" y="10" id="_img"/>
@@ -447,13 +432,13 @@
 		</s:NavigatorContent>
 		
 	</mx:TabNavigator>
-	<s:BorderContainer x="6" y="400" width="98%" height="400" id="_dropDown" 
+	<s:BorderContainer x="6" y="536" width="98%" height="264" id="_dropDown" 
 					   backgroundAlpha="0.8" backgroundColor="#000000" cornerRadius="20" borderWeight="6" 
 					   dropShadowVisible="true" color="#FFFFFF" borderColor="#939100"	>
 		<s:TextArea x="41" y="104" id="_log" width="811" visible="false" contentBackgroundColor="#555555"> hello </s:TextArea>
 		<mx:ProgressBar x="43" y="50" width="809" color="#64FDFF" fontSize="20" id="_progress" visible="false" mode="manual" chromeColor="#2736FF" height="70"/>
 	</s:BorderContainer>
-	<s:BorderContainer x="0" y="0" width="100%" height="100%" id="_imgDrop" visible="false">
+	<s:BorderContainer x="0" y="0" width="100%" height="100%" id="_imgDrop" visible="false" backgroundColor="#6D6D6D">
 		<mx:Image x="0" y="0" id="_imgBig" visible="false" />
 	</s:BorderContainer>
 </s:Application>

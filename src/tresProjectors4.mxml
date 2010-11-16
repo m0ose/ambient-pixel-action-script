@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" xmlns:ns1="*">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
@@ -44,6 +44,8 @@
 			
 			public function load_camera(e:Event=null):void
 			{
+				cam = _camDisp.camera;
+				/*
 				cam = Camera.getCamera( camlist.selectedIndex.toString() )
 				
 				var wid:int = 320
@@ -56,6 +58,7 @@
 					vidDisp.height = hei
 				}
 				vidDisp.attachCamera( cam)
+				*/
 			}
 			
 			//
@@ -64,7 +67,7 @@
 			public var mp:multiProjector 
 			public function projectorsStart( numberOfProjectors,  timeout:int )
 			{
-				mp = new multiProjector( cam , stage );
+				mp = new multiProjector( _camDisp.camera , stage );
 				mp.graycode_divider = Math.pow( 2, _coarsness.value);
 				mp._tone = _color.value * 0x010101;
 				mp.callib_3( _thresh_hold.value , numberOfProjectors , timeout );
@@ -90,12 +93,12 @@
 				
 			}
 			
-
+			
 			//
 			// INTERPOLATION STUFF
 			//
 			
-
+			
 			
 			var projMap_list:Array = new Array()
 			
@@ -134,19 +137,19 @@
 				// REMOVE EVENT LISTENER. 
 				// this is a sweet peice of code.
 				e.target.removeEventListener( e.type, arguments.callee );
-								
+				
 				setTimeout( interpolateAll, 60);
 			}
 			/*public function interpolate1( n:int):void
 			{
-				if( n < mp.sbList.length && n >= 0)
-				{
-					var sb:Sandbox3 = mp.sbList[ n ];
-					var pm:ProjectorMap = new ProjectorMap( sb.graymap) ;
-					pm.interpolate( _pointsKept.value );
-					projMap_list[n] = pm; ;
-					_log.text += "\n interpolated : " + n; 
-				}
+			if( n < mp.sbList.length && n >= 0)
+			{
+			var sb:Sandbox3 = mp.sbList[ n ];
+			var pm:ProjectorMap = new ProjectorMap( sb.graymap) ;
+			pm.interpolate( _pointsKept.value );
+			projMap_list[n] = pm; ;
+			_log.text += "\n interpolated : " + n; 
+			}
 			}
 			*/
 			
@@ -286,93 +289,93 @@
 			/*  this technique turned out to be harder than just stitching the actual projector maps together then making a mesh
 			function stitchUVMeshes()
 			{
-				
-				var meshList:Array = new Array( );
-				var n_proj:int = mp.projector_count ;
-				
-				var wid:int = 0;
-				var hei:int = 0;
-				
-				if( projMap_list.length > 0 )
-				{
-					for( var i:int = 0 ; i < projMap_list.length ; i++ )
-					{
-						//make bourke mesh for each projector map
-						//
-						var proj_map:ProjectorMap = projMap_list[ i];
-						var mesh:BourkeMesh = new BourkeMesh();
-						mesh.projMapToBourkeMesh( proj_map);
-						wid = mesh.width;
-						hei = mesh.height;
-						var st:String = mesh.meshString ;
-						meshList.push( st);
-					}
-					
-					//combine all meshes into 1 mesh
-					//
-					
-					var newWidth:int = int( meshList.length * wid );
-					var newHeight:int = hei;
-					var meshString:String =  "2\n" + newWidth + " " + newHeight + "\n";
-					
-					// seperate each map into an array of different lines
-					//  so var seperated is an array of arrays
-					var seperated:Array = new Array();
-					for( i = 0; i < meshList.length; i++ )
-					{
-						var currentBourke:String = meshList[i];
-						seperated.push( currentBourke.split('\n').slice(2) );//seperate, and throw out first two lines. 
-					}
-					
-					while( seperated[0].length >= width )
-					{
-						for( i=0; i < seperated.length;i++)
-						{
-							var sep:Array = seperated[i];
-							var oneleaf:Array = sep.slice(0, wid );
-							for( var n1:int = 0; n1 < oneleaf.length; n1++)
-							{
-								//IMPORTANT : TODO CHANGE X,Y VALUES SO THAT THEY DON'T OVERLAP. 
-								//   oneleaf[ n1].x = ?
-								meshString += oneleaf[n1] + "\n" ;
-							}
-							seperated[i] = sep.slice( wid);
-						}
-					}
-					_log.text = meshString;
-					var newPBM:BourkeMesh = new BourkeMesh();
-					newPBM.meshString = meshString;
-					newPBM.saveQuartzMesh();
-				}
-				
+			
+			var meshList:Array = new Array( );
+			var n_proj:int = mp.projector_count ;
+			
+			var wid:int = 0;
+			var hei:int = 0;
+			
+			if( projMap_list.length > 0 )
+			{
+			for( var i:int = 0 ; i < projMap_list.length ; i++ )
+			{
+			//make bourke mesh for each projector map
+			//
+			var proj_map:ProjectorMap = projMap_list[ i];
+			var mesh:BourkeMesh = new BourkeMesh();
+			mesh.projMapToBourkeMesh( proj_map);
+			wid = mesh.width;
+			hei = mesh.height;
+			var st:String = mesh.meshString ;
+			meshList.push( st);
+			}
+			
+			//combine all meshes into 1 mesh
+			//
+			
+			var newWidth:int = int( meshList.length * wid );
+			var newHeight:int = hei;
+			var meshString:String =  "2\n" + newWidth + " " + newHeight + "\n";
+			
+			// seperate each map into an array of different lines
+			//  so var seperated is an array of arrays
+			var seperated:Array = new Array();
+			for( i = 0; i < meshList.length; i++ )
+			{
+			var currentBourke:String = meshList[i];
+			seperated.push( currentBourke.split('\n').slice(2) );//seperate, and throw out first two lines. 
+			}
+			
+			while( seperated[0].length >= width )
+			{
+			for( i=0; i < seperated.length;i++)
+			{
+			var sep:Array = seperated[i];
+			var oneleaf:Array = sep.slice(0, wid );
+			for( var n1:int = 0; n1 < oneleaf.length; n1++)
+			{
+			//IMPORTANT : TODO CHANGE X,Y VALUES SO THAT THEY DON'T OVERLAP. 
+			//   oneleaf[ n1].x = ?
+			meshString += oneleaf[n1] + "\n" ;
+			}
+			seperated[i] = sep.slice( wid);
+			}
+			}
+			_log.text = meshString;
+			var newPBM:BourkeMesh = new BourkeMesh();
+			newPBM.meshString = meshString;
+			newPBM.saveQuartzMesh();
+			}
+			
 			}
 			*/
 			/*
 			function stitchUVMeshes2BACKUP()
 			{
-				var sb1:Sandbox3 = mp.sbList[0];
-				
-				
-				var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
-				bigProjMap.proj_map = new Array();
-				
-				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
-				{
-					var current_pm1:ProjectorMap = projMap_list[ pn] ;
-					current_pm1.triangulation();
-					current_pm1.fillIn();
-				}
-				
-				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
-				{
-					var current_pm:ProjectorMap = projMap_list[ pn] ;
-					bigProjMap.proj_map = bigProjMap.proj_map.concat( current_pm.proj_map );
-				}
-				_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
-				
-				var PBM:BourkeMesh = new BourkeMesh();
-				PBM.projMapToBourkeMesh( bigProjMap );
-				PBM.saveQuartzMesh();
+			var sb1:Sandbox3 = mp.sbList[0];
+			
+			
+			var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
+			bigProjMap.proj_map = new Array();
+			
+			for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+			{
+			var current_pm1:ProjectorMap = projMap_list[ pn] ;
+			current_pm1.triangulation();
+			current_pm1.fillIn();
+			}
+			
+			for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+			{
+			var current_pm:ProjectorMap = projMap_list[ pn] ;
+			bigProjMap.proj_map = bigProjMap.proj_map.concat( current_pm.proj_map );
+			}
+			_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
+			
+			var PBM:BourkeMesh = new BourkeMesh();
+			PBM.projMapToBourkeMesh( bigProjMap );
+			PBM.saveQuartzMesh();
 			}*/
 			
 			
@@ -433,7 +436,7 @@
 				
 				_log.text += "# of projectors : " + numOfProjs +  "   individual proj map width  : " + scrWid + " \n"
 				_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
-			
+				
 				if( scrWid != bigProjMap.width() )
 				{
 					_log.text += " ERROR in stitchmesh :   indiividual map size does not equal final stitched map size. my bad" ;
@@ -452,16 +455,16 @@
 			public function removeBadGradient():void
 			{
 				
-					for( var n:int = 0 ; n < mp.sbList.length; n++)
-					{
-						var currentSB:Sandbox3 = mp.sbList[n];
-						
-						var grad:gradientRemove = new gradientRemove();
-						
-						_log.text += " removing gradient " + n ;
-						currentSB.graymap = grad.removeBadGradient( currentSB.graymap);
-						_log.text += "\n" + grad._log;
-					}
+				for( var n:int = 0 ; n < mp.sbList.length; n++)
+				{
+					var currentSB:Sandbox3 = mp.sbList[n];
+					
+					var grad:gradientRemove = new gradientRemove();
+					
+					_log.text += " removing gradient " + n ;
+					currentSB.graymap = grad.removeBadGradient( currentSB.graymap);
+					_log.text += "\n" + grad._log;
+				}
 				
 			}
 			
@@ -538,7 +541,7 @@
 						var pp:Point = bigProjMap.getProjXY( x,y);
 						if( pp.x > 0 && pp.x < scrWid   &&   pp.y > 0 && pp.y < scrHeight)
 						{
-								overlaps[pp.x][ pp.y].push( new Point(x,y) );
+							overlaps[pp.x][ pp.y].push( new Point(x,y) );
 						}
 					}
 				}
@@ -556,9 +559,9 @@
 				
 			}
 			
-				
-				
-				
+			
+			
+			
 			
 		]]>
 	</fx:Script>
@@ -569,22 +572,11 @@
 	<mx:Image x="0" y="0" id="_img2"/>
 	<mx:TabNavigator x="30" y="10" width="676" height="564"  contentBackgroundAlpha="0.0" contentBackgroundColor="#989898">
 		<s:NavigatorContent label="select camera" width="100%" height="100%" contentBackgroundAlpha="0.0" backgroundAlpha="0.0">
-			<mx:Text text="note: bug. this video must be displayed at least once in order for the video to start capturing" x="39" y="294"/>
-			<mx:VideoDisplay width="320" height="240" 
-							 id="vidDisp" 
-							 visible="true"
-							 creationComplete="load_camera( event)"  x="14" y="40" contentBackgroundAlpha="1.0"/>
-			<mx:Text text="Choose a camera. there are {camlist.dataProvider.length} camera(s)"  x="14" y="14"/>
-			<mx:ComboBox id="camlist"
-						 dataProvider="{Camera.names}"
-						 width="200"	
-						 selectedIndex="1" 
-						 change="load_camera(event)"
-						 x="10" y="318"/>
-			<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="1" id="resolution_form" change="load_camera(event)" x="10" y="345"/>
+			<ns1:camDisplay x="10" y="0" width="654" height="521" id="_camDisp">
+			</ns1:camDisplay>
 		</s:NavigatorContent>
 		<s:NavigatorContent label="callibration" width="100%" height="100%">
-				<mx:Image x="0" y="0" id="_imgCallib"/>
+			<mx:Image x="0" y="0" id="_imgCallib"/>
 			<s:Button x="10" y="164" label="CALLIBRATE" click="projectorsStart(_number_of_projectors.value, _timeout.value)"/>
 			<s:NumericStepper x="13" y="22" minimum="1" maximum="10" stepSize="1" id="_number_of_projectors" value="3"/>
 			<s:HSlider x="10" y="79" minimum="0" maximum="255" stepSize="1" value="14" id="_thresh_hold" />
@@ -601,7 +593,7 @@
 			<s:Label x="207" y="113" text="8" id="_coarsness_label"/>
 			<s:Button x="10" y="283" label="remove bad gradient" click="removeBadGradient()" />
 			<s:Label x="9" y="211" text="Post callibration stuff" textDecoration="underline" fontSize="20" fontWeight="bold"/>
-		
+			
 		</s:NavigatorContent>
 		<s:NavigatorContent label="interpolation" width="100%" height="100%" backgroundAlpha="0.0">
 			<s:Label x="10" y="60" text="percent points to keep"/>
@@ -625,5 +617,5 @@
 			<s:Label x="10" y="124" text="AND / OR" fontSize="17" fontWeight="bold" width="140"/>
 		</s:NavigatorContent>
 	</mx:TabNavigator>
-
+	
 </s:Application>

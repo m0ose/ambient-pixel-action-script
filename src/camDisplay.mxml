@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" addedToStage="load_camera()" >
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.VideoDisplay;
+			import mx.core.IVisualElement;
+			
+			import org.osmf.video.VideoElement;
+		
+	
+			public var video:Video;
+			public var camera:Camera;
+			public var bmd:BitmapData
+			public var _log:String = "";
+			public var _width:int = 640;
+			public var _height:int = 480;
+			
+			
+			public var cam_resolutions:ArrayCollection = new ArrayCollection(
+				[ {label:"640 x 480", width:640, height:480}, 
+					{label:"320 x 240", width:320, height:240}, 
+					{label:"160 x 120", width:160, height:120}
+				]
+			)
+			private var tim:Timer;
+			public function load_camera(e:Event=null):void
+			{	
+				
+				camera = null;
+				video = null;
+				if(resolution_form)
+				{
+					_width = resolution_form.selectedItem.width;
+					_height = resolution_form.selectedItem.height;
+				}
+				camera = Camera.getCamera( camlist.selectedIndex.toString()  );
+				camera.setMode( _width,_height,60);
+				
+				// this is for that stupid ass flex bug
+				video = new Video();
+				video.width = _width;
+				video.height = _height;
+				video.attachCamera( camera);
+				//..stupid flex bug fix
+				
+				bmd = new BitmapData(320, 240,false);
+				bmd.draw( video);
+				_img.source = new Bitmap( bmd);
+				_log += " Camera changed to" + camera.name+ "\n";
+				
+				stopDisplay();
+				//update displayed image
+				tim = new Timer( 100);
+				tim.addEventListener(TimerEvent.TIMER, updateBMD);
+				tim.start();
+			}
+			public function stopDisplay()
+			{
+				if(tim){
+					tim.stop();					
+				}
+			}
+			public function updateBMD(e:TimerEvent)
+			{
+				bmd.draw (video);	
+			}
+			
+		]]>
+	</fx:Script>
+	<s:BorderContainer x="0" y="0" width="100%" height="100%" backgroundColor="#FFFC00" borderColor="#FF0404" borderWeight="10" cornerRadius="20">
+		<s:BorderContainer x="25" y="332" width="293" height="110" borderColor="#FF0101" cornerRadius="20" borderWeight="6" backgroundColor="#1EFE00">
+			<mx:ComboBox id="camlist"
+						 dataProvider="{Camera.names}"
+						 width="200"	
+						 selectedIndex="0" 
+						 change="load_camera(event)"
+						 x="10" y="10"/>
+			<s:ComboBox width="188" dataProvider="{cam_resolutions}" selectedIndex="0" id="resolution_form" change="load_camera(event)" x="10" y="50"/>
+		</s:BorderContainer>
+		<mx:Image x="5" y="10" id="_img" />
+	</s:BorderContainer>
+</s:Group>

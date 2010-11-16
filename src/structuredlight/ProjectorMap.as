@@ -279,7 +279,7 @@ package structuredlight
 				var p2:Point = tr.sites[1].coord
 				var p3:Point = tr.sites[2].coord	
 				
-				
+				//
 				//get bounding box
 				var minX:int = p1.x 
 				var minY:int = p1.y
@@ -296,10 +296,14 @@ package structuredlight
 				if( p3.x < minX)      minX = p3.x;
 				if( p3.y < minY)      minY = p3.y;
 				
-				var r:Rectangle = new Rectangle( minX  , minY , maxX - minX , maxY - minY) 
+				var r:Rectangle = new Rectangle( minX  , minY , maxX - minX , maxY - minY);
 				
-				var Area:Number = ( p1.y - p3.y) * (p2.x-p3.x) + (p2.y - p3.y) * ( p3.x - p1.x)
 				
+				//
+				//get area for barycentric coordinates
+				var Area:Number = ( p1.y - p3.y) * (p2.x-p3.x) + (p2.y - p3.y) * ( p3.x - p1.x);
+				
+				//
 				//walk through all pixels in the bounding box
 				for( var x:int = r.x; x < r.x + r.width ; x++)
 				{
@@ -326,8 +330,8 @@ package structuredlight
 							newP.y = proj_map[p1.x][p1.y].y * gary1 + proj_map[p2.x][p2.y].y * gary2 + proj_map[p3.x][p3.y].y * gary3
 							
 							
-							newP.x = Math.round( newP.x)
-							newP.y = Math.round( newP.y)
+							//newP.x = Math.round( newP.x)
+							//newP.y = Math.round( newP.y)
 							
 							proj_map[x][y] = newP.clone()
 						}
