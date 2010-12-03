@@ -415,6 +415,35 @@ package structuredlight
 			bm.draw( s) ;
 			return bm
 		}
+		//
+		//
+		//  draw the camera triangles
+		//
+		//
+		public function drawCamTriangles( fillColor:uint = 0xbada55, lineColor:uint=0xffffff, bgcolor:uint=0x000000):BitmapData
+		{
+			var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, bgcolor);
+			
+			if( proj_map)
+			{
+				var s:Shape = new Shape();
+				s.graphics.lineStyle(1, lineColor );
+				s.graphics.beginFill( fillColor );
+				
+				var camTriads:Vector.<Array> = getCameraTriangles();
+				
+				for each( var tr:Array in camTriads)
+				{
+					s.graphics.moveTo( tr[0].x ,tr[0].y);
+					s.graphics.lineTo( tr[1].x, tr[1].y);
+					s.graphics.lineTo( tr[2].x, tr[2].y);
+					s.graphics.lineTo( tr[0].x, tr[0].y);			
+				}
+				
+				bm.draw( s);//draw the lines on
+			}
+			return bm;	
+		}
 		
 	}//class
 }//package

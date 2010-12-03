@@ -2,7 +2,7 @@
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
 			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600"
-			   applicationComplete="watchKeyboard();" xmlns:ns1="*">
+			   applicationComplete="watchKeyboard(); loadImages()" xmlns:ns1="*">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
@@ -11,13 +11,14 @@
 		<![CDATA[
 			import CamMapfilters.gradientRemove;
 			
+			import ImageStuff.loadImagesXML;
+			
 			import flash.media.Camera;
 			import flash.media.Video;
 			
 			import mx.collections.ArrayCollection;
 			
 			import structuredlight.*;
-			
 		
 			public var cam:Camera;
 			public var sandBox:Sandbox3 ;
@@ -34,12 +35,22 @@
 			//
 			//  
 			//
+			
+			//  Image. TODO. this should be replaced with some sort of dynamic image loading
+			//
+			//[Embed(source="images/chacoPanarama3072Xsomething.jpg")]
+			//private var chacoPanarama:Class;
+			public var _images:loadImagesXML;
+			public var current_image_index:int =0;
+			
 			public var timeout:uint = 300;
 			public var color:uint = 0xdddddd ;
 			public var threshHold:uint = 9 ;
 			public var coarse:int = 8 ;
 			
-			function formChange():void
+			public var distortedImage:Bitmap;
+			
+			public function formChange():void
 			{
 				timeout = _timeout.value;
 				color = _color.value * 0x010101 ;
@@ -57,30 +68,53 @@
 				stage.addEventListener(KeyboardEvent.KEY_UP, keyPressed);
 				_log.text = " keyboard being watched ";
 			}
+			public function loadImages():void
+			{
+				_images = new loadImagesXML();
+			}
 			private function keyPressed(e:KeyboardEvent):void
 			{
 
 			   _log.text += e.keyCode + " pressed      " ;
-				if( e.keyCode == Keyboard.ENTER || e.keyCode == Keyboard.SPACE)
-				{
-					if( state != _states.indexOf("scanning") )
-					{
-						startScan();	
-					
-					}
-				}
+
 				//escape exits dispolay
 				if( state == _states.indexOf("displaying") )
 				{
-					if( e.keyCode == Keyboard.ESCAPE)
+					if( e.keyCode == Keyboard.ESCAPE || e.keyCode == Keyboard.SPACE)
 					{
 						dropUpImage();
+						state = states.indexOf("idle");
+					}
+					if( e.keyCode == Keyboard.RIGHT)
+					{
+						current_image_index = (current_image_index + 1) % _images.images.length;
+						d24Image();
 						
 					}
 					
 				}
+				else if( e.keyCode == Keyboard.ENTER || e.keyCode == Keyboard.SPACE)
+				{
+					if( state != _states.indexOf("scanning") && state != _states.indexOf("displaying") )
+					{
+						startScan();	
+						
+					}
+				}
 			}
 			
+			
+			public function goFullScreen( )
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIGhandler)
+				stage.displayState = "fullScreen"
+				
+			}
+			
+			private function goBIGhandler(e:FullScreenEvent)
+			{
+				
+			}
 			//
 			//
 			//
@@ -93,6 +127,7 @@
 			
 			public function startScan():void
 			{
+				_camDisp.stopDisplay();
 				state = _states.indexOf("scanning");
 				_log.text = " start scan  \n";
 				dropDown();
@@ -124,22 +159,26 @@
 			}
 			public function removeGradient():void
 			{
-				
-				var grad:gradientRemove = new gradientRemove();
-				grad.addEventListener( String(grad.DONE_EVENT), badGradDone );
-				sandBox.graymap = grad.removeBadGradient( sandBox.graymap);
-			
-				//setTimeout( badGradDone, 3000);
-			
+				if( _gradient_check_box.selected )
+				{
+					var grad:gradientRemove = new gradientRemove();
+					grad.addEventListener( String(grad.DONE_EVENT), badGradDone );
+					sandBox.graymap = grad.removeBadGradient( sandBox.graymap);
+				}
+				else
+				{
+					setTimeout( makeProj_Map, 10);
+				}
 			}
 			public function badGradDone(e:Event = null):void
 			{
 				//_tabs.selectedIndex = 0;
 				progress(40);
-
-				e.target.removeEventListener( e.type, arguments.callee );
+				if(e){
+					e.target.removeEventListener( e.type, arguments.callee );
+					_log.text += " bad grad done " + e.type +" \n";
+				}
 				setTimeout( makeProj_Map, 10);
-				_log.text += " bad grad done " + e.type +" \n";
 			}
 			public function makeProj_Map():void
 			{
@@ -217,8 +256,8 @@
 			{
 				//set objects to null
 				// and hope auto-garbage collect frees them.
-				sandBox = null;
-				proj_map = null;
+				//sandBox = null;//comment out for debugging
+				//proj_map = null;
 			}
 			public function makeChangesPermanent():void
 			{
@@ -255,25 +294,34 @@
 				_progress.visible= false;
 			}
 			public function dropImage():void
-			{		
+			{	/*	
 				_imgBig.scaleContent = false;
+				
 				_imgBig.width = stage.width;
 				_imgBig.height = stage.height;
-		
+				
 				
 				
 				_imgDrop.visible =true;
 				_imgBig.visible = true;
+			*/
 			}
 			public function dropUpImage():void
-			{
+			{/*
 				_imgDrop.visible = false;
 				_imgBig.visible = false;
 				_imgBig.scaleContent = true;
 				_imgBig.width = 0;
 				_imgBig.height = 0;
+			*/
+				if( stage.getChildByName("distortedIMG") )
+				{
+					stage.removeChild( stage.getChildByName("distortedIMG") );
+				}
 				unInitMouse();
 				state = _states.indexOf("idle");
+				
+				_camDisp.startDisplay();
 			}
 			
 			//
@@ -281,9 +329,8 @@
 			//  D24 DISPLAY STUFF
 			//
 			
-			[Embed(source="images/chacoPanarama3072Xsomething.jpg")]
-			private var chacoPanarama:Class;
-			
+
+		
 			public function d24Image():void
 			{
 				
@@ -291,10 +338,20 @@
 				var bm:Bitmap;
 				
 				//display chaco
-				bm = new chacoPanarama();
+				//bm = new chacoPanarama();
+				var bmtmp:Bitmap = _images.images[ current_image_index ];
+				var bmWid:int = bmtmp.width;
+				var bmHei:int = bmtmp.height;
+				if( bmWid < stage.width)
+					bmWid = stage.width;
+				if( bmHei < stage.height)
+					bmHei = stage.height;
+				var bmd:BitmapData = new BitmapData(bmWid, bmHei, false, 0x000000);
+				bmd.draw( bmtmp.bitmapData.clone());
+				bm = new Bitmap( bmd ) ;
 				dispMap24.zoom = 0.5; //this is for the chaco , because it's so big.
 				
-				
+				/*
 				var dimensions:Rectangle = new Rectangle(0,0,bm.width,bm.height);
 				
 				if( dispMap24.mapX.width > dimensions.width )
@@ -307,6 +364,12 @@
 				bmd.draw(bm);
 				bm = new Bitmap(bmd);
 				_imgBig.source = bm;
+				*/
+				if( stage.getChildByName("distortedIMG") )
+				{
+					stage.removeChild( stage.getChildByName("distortedIMG") );
+				}
+				stage.addChild( bm).name = "distortedIMG";
 				
 				d24Changed();
 				
@@ -315,7 +378,11 @@
 			public function d24Changed():void
 			{
 				dispMap24.init();
-				_imgBig.filters = [ dispMap24.filter ];
+				if( stage.getChildByName("distortedIMG") )
+				{
+					stage.getChildByName("distortedIMG").filters = [ dispMap24.filter];
+				}
+				//_imgBig.filters = [ dispMap24.filter ];
 			}
 			
 			
@@ -398,6 +465,25 @@
 				}
 			}
 			
+			
+			
+			//
+			//
+			var reviewIndex:int = 0;
+			function reviewFrames( up:Boolean ):void
+			{
+				//if( sandBox)
+				{
+					//if( up)
+						reviewIndex ++;
+					//else
+						//if( reviewIndex > 0 )
+							//reviewIndex --;	
+					reviewIndex = reviewIndex % sandBox.frames_store.length;
+					_img.source = new Bitmap( sandBox.frames_store[ reviewIndex ] );
+					_frame_label.text = reviewIndex.toString();
+				}
+			}
 		]]>
 	</fx:Script>
 	
@@ -408,11 +494,13 @@
 		<s:NavigatorContent label="SELECT CAMERA" width="100%" height="100%">
 
 			<s:Label x="10" y="10" text="Step 1: Choose Camera : " fontSize="20"/>
-			<s:Label x="10" y="165" text="Step 3:  press SPACE to start scan." fontSize="20"/>
-			<s:Button x="51" y="198" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
+			<s:Label x="10" y="227" text="Step 3:  press SPACE to start scan." fontSize="20"/>
+			<s:Button x="51" y="260" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
 			<s:Label x="10" y="82" text="Step 2: Point camera at screen or Image from Projector" height="44" fontSize="20" width="326"/>
 			<ns1:camDisplay x="337" y="10" id="_camDisp">
 			</ns1:camDisplay>
+			<s:Label x="10" y="142" text="STEP 3: " fontSize="20"/>
+			<s:Button x="89" y="147" label="Go Full Screen" width="207" height="70" click="goFullScreen()"/>
 		</s:NavigatorContent>
 		<s:NavigatorContent label="options" width="100%" height="100%">
 			<mx:Image x="10" y="10" id="_img"/>
@@ -423,12 +511,18 @@
 				<s:Label text="gray color" height="11"/>
 				<s:HSlider id="_color" minimum="0" maximum="255" value="228" stepSize="1" width="382" change="formChange()"/>
 				<s:Label text="time to change states"/>
-				<s:HSlider id="_timeout" minimum="200" maximum="3000" stepSize="100" value="400" change="formChange()"/>
+				<s:HSlider id="_timeout" minimum="200" maximum="3000" stepSize="100" value="500" change="formChange()"/>
 				<s:Label text="coarsness"/>
 				<s:Label text="8" id="_coarsness_label" width="57"/>
 				<s:HSlider minimum="0" change="_coarsness_label.text=(Math.pow( 2,  _coarsness.value) ).toString() ; formChange()" id="_coarsness" maximum="10" stepSize="1" value="3"/>
+				<mx:FormItem>
+					<s:CheckBox label="remove wrong gradient" id="_gradient_check_box" selected="true"/>
+				</mx:FormItem>
 			</mx:Form>
 			<s:Button x="7" y="249" label="scan" width="240" height="52" click="startScan()" chromeColor="#BBE4B6" fontSize="20" fontWeight="bold"/>
+			<s:Label x="29" y="333" text="review frames"/>
+			<s:Button x="63" y="350" label="--&gt;" click="reviewFrames(true);"/>
+			<s:Label x="26" y="350" text="0" height="21" width="42" id="_frame_label"/>
 		</s:NavigatorContent>
 		
 	</mx:TabNavigator>

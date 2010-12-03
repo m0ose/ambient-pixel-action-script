@@ -55,9 +55,13 @@
 				_img.source = new Bitmap( bmd);
 				_log += " Camera changed to" + camera.name+ "\n";
 				
+				startDisplay();
+			}
+			public function startDisplay()
+			{
 				stopDisplay();
 				//update displayed image
-				tim = new Timer( 100);
+				tim = new Timer( 200);
 				tim.addEventListener(TimerEvent.TIMER, updateBMD);
 				tim.start();
 			}

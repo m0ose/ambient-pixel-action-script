@@ -104,6 +104,10 @@ package structuredlight
 			//var xdivisions:int = 64 ; 
 			//var ydivisions:int = 48 ;
 			
+			
+			//
+			//  put all nodes into an array 
+			//
 			result += int(xdivisions + 1) + " " + int(ydivisions + 1) + "\n";
 			var nodes:Array = new Array( ydivisions +1);
 			for( var yn:Number = 0 ; yn <= ydivisions; yn++)
@@ -138,6 +142,7 @@ package structuredlight
 					
 				}
 			}
+			
 			for( var yn:Number = 0 ; yn <= ydivisions; yn++)
 			{
 				for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
