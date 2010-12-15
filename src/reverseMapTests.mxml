@@ -458,8 +458,8 @@
 			*/
 			function reverseTriangles()
 			{
-			    var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, 0x000000);
-
+			    
+/*
 				if( proj_map)
 				{
 					var s:Shape = new Shape();
@@ -478,6 +478,10 @@
 					}
 					bm.draw( s);
 				}
+				*/
+				var bmsmall:BitmapData = proj_map.drawCamTriangles(0xbada55, 0xffffff, 0x00000000,2.0);
+				var bm:BitmapData = new BitmapData( bmsmall.width , bmsmall.height  , false, 0x000000);
+				bm.draw( bmsmall, new Matrix(1,0,0,1)); 
 				_img.source = new Bitmap( bm);
 			}
 			function tryUVMapping()

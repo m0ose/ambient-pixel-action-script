@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" viewSourceURL="srcview/index.html">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
+			import org.osmf.layout.AbsoluteLayoutFacet;
+			
 			import structuredlight.BourkeMesh;
 			
 			var verbose:Boolean = false;
-				
+			
 			var fileRef:FileReference;
 			
 			var pbm:BourkeMesh;
@@ -21,11 +23,17 @@
 				pbm.importMeshFile();
 			}
 			
+			var uvTimer:Number = 0
 			public function importComplete( e:Event)
 			{
+				
 				_img.source = new Bitmap( e.target.displayMesh() );
 				_log.text = " map loaded    width" + e.target.width + "  height " + e.target.height; 
+				
+				initTriangles();
+				
 			}
+			
 			//
 			//
 			///      testing uv mesh triangles
@@ -38,8 +46,18 @@
 			///
 			//
 			//
-			[Embed(source="images/chacoPanarama_small.jpg")]
+			[Embed(source="images/radialgrid.jpg")]
 			private var radialgrid:Class;
+			
+			
+			
+			var bmIn:Bitmap
+			var xyVertices:Vector.<Number> = new Vector.<Number>;
+			var uvVertices:Vector.<Number> = new Vector.<Number>;
+			var indices:Vector.<int> = new Vector.<int>;
+			
+			var xyVerticesOriginal:Vector.<Number> = new Vector.<Number>;
+			var uvVerticesOriginal:Vector.<Number> = new Vector.<Number>;
 			
 			private function splitAtWhiteSpace( s:String):Array
 			{
@@ -47,11 +65,21 @@
 			}
 			
 			
-			function drawTriangles()
+			
+			function initTriangles()
 			{	
-				var bmd:BitmapData = new BitmapData( stage.width, stage.height,false,0xd00d00);
-				var bmIn:Bitmap = new radialgrid as Bitmap;
+				uvTimer = getTimer();
 				
+				var bmd:BitmapData = new BitmapData( stage.width, stage.height,false,0xd00d00);
+				bmIn = new radialgrid as Bitmap;
+				
+				
+				//
+				//
+				////
+				////  parse the String into usable numbers
+				//  
+				//
 				if( !pbm)
 				{
 					_log.text += "\n load mesh file first ";
@@ -63,14 +91,9 @@
 					meshRa[x1] = new Array( pbm.height);
 				}
 				
-				
 				var indexs:Array = pbm.meshString.split( "\n");
-				
 				var type:int = int(indexs[0]);
-				
-				
 				var mesh:Array = indexs.slice(2);//TAKE EVERYTHING AFTER THE FIRST TWO LINES
-				
 				var dimensionsString:String = indexs[1]; //PARSE DIMENSIONS FROM SECOND LINE
 				var dimensions:Array = splitAtWhiteSpace( dimensionsString); 
 				width = int( dimensions[0]) ;
@@ -87,8 +110,13 @@
 				//
 				//
 				var index:int = 0 ;
-				var xyVertices:Vector.<Number> = new Vector.<Number>;
-				var uvVertices:Vector.<Number> = new Vector.<Number>;
+				indices = new Vector.<int>;
+				xyVertices = new Vector.<Number>;
+				uvVertices = new Vector.<Number>;
+				
+				xyVerticesOriginal = new Vector.<Number>;
+				uvVerticesOriginal = new Vector.<Number>;
+				
 				for ( var n:int = 0 ; n < mesh.length; n++)
 				{
 					var tmp:String = mesh[n];
@@ -111,16 +139,19 @@
 						if(verbose)
 							_log.text += " ( " + xc +" ,  " + yc+")";
 						
+						
 						var x2:Number = (Number(cent[0]) + 1 ) * stage.width / 2;
 						var y2:Number = (Number(cent[1]) + 1 ) * stage.height / 2;
 						var u2:Number = Number(cent[2])  ;
 						var v2:Number = Number(cent[3])   ;
-
 						
-						//var vert:Object = {  x: (cent[0] + 1 ) * 500 , y: (cent[1] + 1) * 400, u: cent[2] * 1000, v : cent[3] * 800, i: cent[4] , index: int(index) };
-						//var vert:Object = {  x: (cent[0] + 1  ), y:( cent[1] + 1  ), u: cent[2] , v : cent[3] , i: cent[4] , index: int(index) };
+						if( _invertBox.selected ){
+							y2 = ( - Number(cent[1]) + 1 ) * stage.height / 2;	
+							v2 = 1 - Number(cent[3]) ;
+						}
+						
 						var vert:Object = {  x: x2, y: y2, u: u2 , v : v2 , i: cent[4] , index: int(index) };
-		
+						
 						if(verbose)
 							_log.text += "\n x: " + vert.x + " y:"+ vert.y + " u:"+ vert.u +" v:"+ vert.v +" i:"+ vert.i +   " indx:"+ vert.index ; 
 						meshRa[xc][yc] = vert ;
@@ -130,17 +161,23 @@
 						uvVertices.push( vert.u);
 						uvVertices.push( vert.v);
 						
+						xyVerticesOriginal.push( Number(vert.x) );
+						xyVerticesOriginal.push( Number(vert.y) );
+						uvVerticesOriginal.push( Number(vert.u) );
+						uvVerticesOriginal.push( Number(vert.v) );
+						
+						
 						index++;
 					}			
 				}
 				
-				var indices:Vector.<int> = new Vector.<int>;
+				/*
 				var outShape:Shape = new Shape();
-
 				var uvShape:Shape = new Shape();
 				uvShape.graphics.lineStyle(1,0x00f00f, 0.8);
 				var xyShape:Shape = new Shape();
 				xyShape.graphics.lineStyle(1,0xf0000f, 0.8);
+				*/
 				for( var x:int = 0; x < meshRa.length - 1 ; x++)
 				{
 					for( var y:int = 0 ; y < meshRa[0].length - 1; y++)
@@ -161,7 +198,7 @@
 							indices.push( center.index );
 							indices.push( down.index );
 							indices.push( diag.index );
-							
+					/*		
 							xyShape.graphics.moveTo( center.x, center.y);
 							xyShape.graphics.lineTo( right.x, right.y);
 							xyShape.graphics.moveTo( center.x, center.y);
@@ -175,11 +212,11 @@
 							uvShape.graphics.lineTo( bmd.width * down.u, bmd.height * down.v);
 							uvShape.graphics.moveTo( bmd.width * center.u, bmd.height * center.v);
 							uvShape.graphics.lineTo( bmd.width * diag.u, bmd.height * diag.v);
-							
+					*/		
 						}
 					}
 				}
-				
+				/*
 				outShape.graphics.beginBitmapFill( bmIn.bitmapData);
 				outShape.graphics.drawTriangles( xyVertices, indices, uvVertices);
 				outShape.graphics.endFill();
@@ -187,96 +224,121 @@
 				bmd.draw( outShape );
 				bmd.draw( uvShape );
 				bmd.draw( xyShape );
-		
+				
 				_img.source = ( new Bitmap( bmd) );
+				*/
+				redrawImage( bmIn.bitmapData);
+				//
+				// count time elapsed
+				_log.text += "\n uv time elapsed : " +  (getTimer() - uvTimer);  
+				
 			}//...drawTriangles
 			
-			
-			
-			//
-			//
-			// stitching testing
-			//
-			//
-			
-			
-			
-			
-			var meshList:Array = new Array();
+			var bmBig:BitmapData
+			function redrawImage( bm2:BitmapData )
+			{
+				if( ! bmBig )	
+					bmBig = new BitmapData( stage.width, stage.height);
+				else if( bmBig.width != stage.width || bmBig.height != stage.height )
+					bmBig = new BitmapData( stage.width, stage.height);
+				
 
-			public function importMesh2()//second file
-			{
-				var pbm:BourkeMesh = new BourkeMesh();
-				pbm.addEventListener( pbm._completeLoadingEvent, importComplete2);
-				pbm.importMeshFile();
+
 				
-			}
-			public function importComplete2( e:Event)
-			{
-				_img.source = new Bitmap( e.target.displayMesh() );
-				_log.text = " map loaded    width" + e.target.width + "  height " + e.target.height + "\n"; 
-				meshList.push( e.target);
-			}
-			public function stitchUVMeshes():void
-			{
-			
-				if( meshList.length == 0 )
+				var outShape:Shape = new Shape();
+				outShape.graphics.beginBitmapFill( bm2);
+				outShape.graphics.drawTriangles( xyVertices, indices, uvVertices);
+				outShape.graphics.endFill();
+				
+				bmBig.draw( outShape );
+
+				
+				if( _showTriangles.selected )
 				{
-					_log.text += " mesh list < 1   ";
-					return;
-				}
-				var wid:int = 0;
-				var hei:int = 0;
-				
-				wid = meshList[0].width;
-				hei = meshList[0].height;
-										
-					//combine all meshes into 1 mesh
-					//
-				_log.text += " Mesh list length " + meshList.length + " \n" ; 	
-				var newWidth:int = int( meshList.length * wid );
-				var newHeight:int = hei;
-				var meshString:String =  "2\n" + newWidth + " " + newHeight + "\n";
-					
-					// seperate each map into an array of different lines
-					//  so var seperated is an array of arrays
-				var seperated:Array = new Array();
-				for( var i:int = 0; i < meshList.length; i++ )
-				{
-					_log.text += "mesh converted to string" + meshList[i].width + " " + meshList[i].height + "\n" ;
-					var currentBourke:String = meshList[i].meshString;
-					seperated.push( currentBourke.split('\n').slice(2) );//seperate, and throw out first two lines. 
-				}
-				
-				
-				for( var n:int = 0; n < newHeight; n++ )
-				{
-					for( var s:int =0 ; s < meshList.length; s++ )
+					for( var i:int = 2 ; i < indices.length; i = i + 3)
 					{
-						var m:Array = seperated[s];
-						var ms:Array = m.slice( n * wid, (n+1) * wid);
-						for ( var n2:int = 0; n2 < ms.length ; n2++)
-						{
-							//NEED TODO adjust the coordinates so that they are not right on top of eachother.
-							meshString += ms[ n2] + "\n";
-						}
 					}
+					
 				}
 				
 				
-				//_log.text += meshString;
-				_log.text += " mesh string length " + meshString.length ; 
-				var newPBM:BourkeMesh = new BourkeMesh();
-				newPBM.meshString = meshString;
-				newPBM.saveQuartzMesh();
+				_img.source = ( new Bitmap( bmBig) );
 			}
+			
+
+		
+			function matrixTransform( matrix:Matrix )
+			{	
+				var ucoord:Number ;
+				var vcoord:Number ;
+				for( var n:int = 0 ; n < uvVertices.length; n = n + 2 )
+				{	
+					ucoord = Number(uvVertices[n]);	
+					vcoord = Number(uvVertices[ n+1]);
+					
+					uvVertices[n] = matrix.a * ucoord + matrix.c * ucoord + matrix.tx;//x
+					uvVertices[n+1] = matrix.b * vcoord + matrix.d * vcoord + matrix.ty;//y
+				}
+			}
+			function matrixTransformOfOriginal( matrix:Matrix )
+			{	
+				var ycoord:Number ;
+				var xcoord:Number ;
+				for( var n:int = 0 ; n < uvVerticesOriginal.length; n = n + 2 )
+				{	
+					xcoord = uvVerticesOriginal[n];	
+					ycoord = uvVerticesOriginal[ n+1];
+					
+					uvVertices[n] = matrix.a * xcoord + matrix.c * ycoord + matrix.tx;//x
+					uvVertices[n+1] = matrix.b * xcoord + matrix.d * ycoord + matrix.ty;//y
+				}
+			}
+		
+			var centx:Number = 0;
+			var centy:Number = 0;
+			
+			function watchkeys( e:KeyboardEvent )
+			{
+				if(e.keyCode = Keyboard.LEFT){
+					centx --;
+				}
+				else if(e.keyCode = Keyboard.RIGHT )
+				{
+					centx ++;	
+				}
+				else if(e.keyCode = Keyboard.UP )
+				{
+					centy -- ;
+				}
+				else if(e.keyCode = Keyboard.DOWN )
+				{
+					centy ++;	
+				}
+				matrixTransformOfOriginal( new Matrix(1,0,0,1, centx,centy));
+			}
+			
+			
+			public function goFullScreen( )
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIGhandler)
+				stage.displayState = "fullScreen"	;
+				_log.text += " \n going Full Screen ";
+			}
+			public function goBIGhandler( e:FullScreenEvent)
+			{
 				
+			}
 			
 		]]>
 	</fx:Script>
 	
-	<mx:Image x="0" y="0" id="_img"/>
+	<mx:Image x="0" y="0" id="_img" />
 	<s:Button x="69" y="67" label="load mesh .data" click="importMesh()"/>
 	<s:TextArea x="445" y="115" width="482" height="450" id="_log" contentBackgroundAlpha="0.5" color="#FFFFFF" contentBackgroundColor="#000000"/>
-	<s:Button x="198" y="67" label="drawTriangles" click="drawTriangles()"/>
+	<s:Button x="68" y="183" label="re-draw Triangles" click="initTriangles()"/>
+	<s:Button x="69" y="106" label="FULL screen" click="goFullScreen()"/>
+	<s:CheckBox x="199" y="186" label="invert" id="_invertBox" width="55" selected="true"/>
+	<s:CheckBox x="199" y="212" label="show Triangles" id="_showTriangles"/>
+	
 </s:Application>
+

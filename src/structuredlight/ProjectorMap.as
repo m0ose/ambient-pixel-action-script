@@ -77,7 +77,7 @@ package structuredlight
 		//
 		public function cleanUp():void
 		{
-			cam_map.deleteNoise()
+			
 		}
 
 		
@@ -88,7 +88,6 @@ package structuredlight
 
 		private function reverseMapDone(e:Event):void
 		{
-			//send the event
 		}
 		
 		
@@ -101,7 +100,7 @@ package structuredlight
 		// Median
 		// get the median seperatly for both x and y,
 	
-		public function pickPointsMedian( percentToKeep):void
+		public function pickPointsMedian( percentToKeep:Number):void
 		{
 			
 			if(!rev_map){
@@ -420,26 +419,31 @@ package structuredlight
 		//  draw the camera triangles
 		//
 		//
-		public function drawCamTriangles( fillColor:uint = 0xbada55, lineColor:uint=0xffffff, bgcolor:uint=0x000000):BitmapData
+		public function drawCamTriangles( fillColor:uint = 0x50bada55, lineColor:uint=0xffffffff, bgcolor:uint=0x00000000, scale:Number = 1.0):BitmapData
 		{
-			var bm:BitmapData = new BitmapData( cam_map._screen_width, cam_map._screen_height , false, bgcolor);
+			var bm:BitmapData = new BitmapData( scale * cam_map._cam_width, scale * cam_map._cam_height , true, bgcolor);
 			
 			if( proj_map)
 			{
 				var s:Shape = new Shape();
 				s.graphics.lineStyle(1, lineColor );
-				s.graphics.beginFill( fillColor );
+				if(fillColor != 0)
+					s.graphics.beginFill( fillColor );
 				
 				var camTriads:Vector.<Array> = getCameraTriangles();
 				
 				for each( var tr:Array in camTriads)
 				{
-					s.graphics.moveTo( tr[0].x ,tr[0].y);
-					s.graphics.lineTo( tr[1].x, tr[1].y);
-					s.graphics.lineTo( tr[2].x, tr[2].y);
-					s.graphics.lineTo( tr[0].x, tr[0].y);			
+					s.graphics.moveTo(  scale * tr[0].x,  scale * tr[0].y);
+					s.graphics.lineTo(  scale * tr[1].x,  scale * tr[1].y);
+					s.graphics.lineTo(  scale * tr[2].x,  scale * tr[2].y);
+					s.graphics.lineTo(  scale * tr[0].x,  scale * tr[0].y);	
+					if(fillColor != 0)
+					{
+						s.graphics.endFill();
+						s.graphics.beginFill( fillColor);
+					}
 				}
-				
 				bm.draw( s);//draw the lines on
 			}
 			return bm;	

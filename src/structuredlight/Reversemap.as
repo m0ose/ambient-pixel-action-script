@@ -1,5 +1,9 @@
 package structuredlight
 {
+	// reverses the map
+	// todo : change this to a binary tree rather than a 2d array.
+	//
+	//
 	import flash.display.BitmapData;
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
@@ -62,8 +66,8 @@ package structuredlight
 			//
 			//var maximum:int=0;
 			
-			var screenScaleX:Number = cam_map._screen_width / cam_map._cam_width;/// cam_map.width();
-			var screenScaleY:Number = cam_map._screen_height / cam_map._cam_height; /// cam_map.height() ;
+			var screenScaleX:Number = 1;//cam_map._screen_width / cam_map._cam_width;/// cam_map.width();
+			var screenScaleY:Number = 1;//cam_map._screen_height / cam_map._cam_height; /// cam_map.height() ;
 				
 				
 			for(var  x:int=0; x < cam_map.width(); x++)
@@ -85,19 +89,7 @@ package structuredlight
 			this.dispatchEvent( event_ready)
 
 		}//end reverse
-	/*	public function getScaledMapXY(x:int, y:int):Point
-		{
-			var scale_X:int = cam_map._screen_width / cam_map._gray_width ;
-			var scale_Y:int = cam_map._screen_height / cam_map._gray_height ;
-			
-			var p:Point = cam_map.getMapXY( x, y);
-			if( p.x < 0 )
-				return p;
-			else
-				return new Point( Math.round(p.x * scale_X) , Math.round(p.y * scale_Y) );
-	
-		}
-		*/
+
 		public function display_rev_map():BitmapData
 		{
 		

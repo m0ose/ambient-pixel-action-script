@@ -11,6 +11,9 @@
 			
 			import ImageStuff.ImageStuff;
 			
+			import MultiProjector.MultiImageBlend;
+			import MultiProjector.MultiProjMapBlend;
+			import MultiProjector.PointOpaque;
 			import MultiProjector.multiProjector;
 			
 			import com.nodename.Delaunay.Triangle;
@@ -188,12 +191,15 @@
 						
 					}
 				}
+			
 				var resultd24:Displacement24 = new Displacement24( resultX, resultY);
 				
 				_img.source = new Bitmap( resultX);
 				
 				return resultd24 ;
 			}
+			
+			
 			var d24:Displacement24
 			public function stitchAndDisplay():void
 			{
@@ -245,8 +251,7 @@
 				
 				if( projmap)
 				{
-					var bm:BitmapData = new BitmapData( projmap.width(), projmap.height() , false, 0x000000);
-					var s:Shape = new Shape();
+					/*var s:Shape = new Shape();
 					s.graphics.lineStyle(1, 0xffffff );
 					
 					
@@ -261,6 +266,9 @@
 						
 					}
 					bm.draw( s);
+					*/	
+					var imgScale:Number = 1.5;
+					var bm:BitmapData = projmap.drawCamTriangles( 0x00000000, 0xff0b00b5, 0xff000000, imgScale);
 					_mesh_img.source = new Bitmap( bm);
 				}
 				
@@ -286,97 +294,7 @@
 				}
 			}
 			
-			/*  this technique turned out to be harder than just stitching the actual projector maps together then making a mesh
-			function stitchUVMeshes()
-			{
-			
-			var meshList:Array = new Array( );
-			var n_proj:int = mp.projector_count ;
-			
-			var wid:int = 0;
-			var hei:int = 0;
-			
-			if( projMap_list.length > 0 )
-			{
-			for( var i:int = 0 ; i < projMap_list.length ; i++ )
-			{
-			//make bourke mesh for each projector map
-			//
-			var proj_map:ProjectorMap = projMap_list[ i];
-			var mesh:BourkeMesh = new BourkeMesh();
-			mesh.projMapToBourkeMesh( proj_map);
-			wid = mesh.width;
-			hei = mesh.height;
-			var st:String = mesh.meshString ;
-			meshList.push( st);
-			}
-			
-			//combine all meshes into 1 mesh
-			//
-			
-			var newWidth:int = int( meshList.length * wid );
-			var newHeight:int = hei;
-			var meshString:String =  "2\n" + newWidth + " " + newHeight + "\n";
-			
-			// seperate each map into an array of different lines
-			//  so var seperated is an array of arrays
-			var seperated:Array = new Array();
-			for( i = 0; i < meshList.length; i++ )
-			{
-			var currentBourke:String = meshList[i];
-			seperated.push( currentBourke.split('\n').slice(2) );//seperate, and throw out first two lines. 
-			}
-			
-			while( seperated[0].length >= width )
-			{
-			for( i=0; i < seperated.length;i++)
-			{
-			var sep:Array = seperated[i];
-			var oneleaf:Array = sep.slice(0, wid );
-			for( var n1:int = 0; n1 < oneleaf.length; n1++)
-			{
-			//IMPORTANT : TODO CHANGE X,Y VALUES SO THAT THEY DON'T OVERLAP. 
-			//   oneleaf[ n1].x = ?
-			meshString += oneleaf[n1] + "\n" ;
-			}
-			seperated[i] = sep.slice( wid);
-			}
-			}
-			_log.text = meshString;
-			var newPBM:BourkeMesh = new BourkeMesh();
-			newPBM.meshString = meshString;
-			newPBM.saveQuartzMesh();
-			}
-			
-			}
-			*/
-			/*
-			function stitchUVMeshes2BACKUP()
-			{
-			var sb1:Sandbox3 = mp.sbList[0];
-			
-			
-			var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
-			bigProjMap.proj_map = new Array();
-			
-			for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
-			{
-			var current_pm1:ProjectorMap = projMap_list[ pn] ;
-			current_pm1.triangulation();
-			current_pm1.fillIn();
-			}
-			
-			for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
-			{
-			var current_pm:ProjectorMap = projMap_list[ pn] ;
-			bigProjMap.proj_map = bigProjMap.proj_map.concat( current_pm.proj_map );
-			}
-			_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
-			
-			var PBM:BourkeMesh = new BourkeMesh();
-			PBM.projMapToBourkeMesh( bigProjMap );
-			PBM.saveQuartzMesh();
-			}*/
+
 			
 			
 			//
@@ -470,97 +388,223 @@
 			
 			//
 			
-			
+			/*
 			
 			//  TESTING 1,2 , ,1,2
 			//
 			//  FIND OVERLAPPING REGIONS
 			//
-			function getOverlaps()
+			function testOpacity()
 			{
+				var meshString:String =  getOpacities();
+				_log.text += blendOpacs._log;
+				var fr:FileReference
+				fr = new FileReference();
+				//var str:String = MakeUVMap4Quartz(xdivisions, ydivisions );
+				fr.save( meshString, "QuartzPBMesh.data");
+			}
+			//var opacityMap:Array = [];	
+			var blendOpacs:MultiImageBlend = new MultiImageBlend();
+
+			public function getOpacities()
+			{
+				makeChangesPermanent();	
 				//
-				//  first stitch 3 projectors together
-				//    note this is duplicated code from stitchUvMeshes2
 				//
-				//
-				var sb1:Sandbox3 = mp.sbList[0];
-				var bigProjMap:ProjectorMap = new ProjectorMap( sb1.graymap );//maybe combine all three cam maps also
-				bigProjMap.proj_map = new Array();
+				// initialise opacities
+				var blendImages:Array = [];
 				
+				
+				for each( var prm:ProjectorMap in projMap_list)
+				{
+					var tmpbmp:Bitmap = new Bitmap( prm.drawCamTriangles( 0xff << 24 | (0xff0000 | 0x88 * projMap_list.length) , 0xff0000ff,0x00000000,1.0));
+					blendImages.push( tmpbmp );
+				}
+				blendOpacs = new MultiImageBlend();
+				blendOpacs.blendBitmaps( blendImages );
+				
+				_log.text += blendOpacs._log;
+					
+				var bm1:BitmapData = blendOpacs.getImage();
+				var bmBigger:BitmapData = new BitmapData( bm1.width , bm1.height );
+				bmBigger.draw( bm1, new Matrix( 1,0,0,1));
+				
+				_mesh_img.source = new Bitmap( bmBigger  );
+				
+				setTimeout( stitchUVMeshesWithOpacity, 50);
+			}
+			public function stitchUVMeshesWithOpacity():String
+			{	
+
+				var sb1:Sandbox3 = mp.sbList[0];
 				var numOfProjs:int = projMap_list.length;
 				
-				//save previous changes to projector maps
-				makeChangesPermanent();
-				
-				//get width
+	
+			//get width
 				var current_pm1:ProjectorMap = projMap_list[ 0] ;
 				var scrWid:int  = current_pm1.width();
 				var scrHeight:int = current_pm1.height();
+				
+				
+				_log.text += "\n # of projectors : " + numOfProjs +  "   individual proj map width  : " + scrWid + " \n"
+				
+
 				//
-				// Take a slice out of every projector map and put them into one map
-				for( var pn:int = 0 ; pn < projMap_list.length ; pn++ )
+				//
+				//  Make string
+				//
+				var xdivisions:int = 96;
+				var ydivisions:int = 54;
+				
+				var result:String = "2 \n";
+				// todo figure out resolution automatically
+
+				
+				
+				//
+				//  put all nodes into an array 
+				//
+				result += int(xdivisions + 1) + " " + int(ydivisions + 1) + "\n";
+				var nodes:Array = new Array( ydivisions +1);
+				for( var yn:Number = 0 ; yn <= ydivisions; yn++)
 				{
-					var current_pm:ProjectorMap = projMap_list[ pn] ;
-					var section:Array = current_pm.proj_map.slice( Math.round( pn * scrWid / numOfProjs) ,  Math.round( (pn +1)*( scrWid / numOfProjs) )  );  
-					bigProjMap.proj_map = bigProjMap.proj_map.concat( section );
+					nodes[ yn] = new Array( xdivisions + 1);
 				}
 				
-				_log.text += "# of projectors : " + numOfProjs +  "   individual proj map width  : " + scrWid + " \n"
-				_log.text += " projector maps stitched     width : " + bigProjMap.width() + "   height : " + bigProjMap.height() + "\n" ; 
+				 // number of x divisions per projector
+				var xdPerProjector:Number = xdivisions / projMap_list.length ;
 				
-				if( scrWid != bigProjMap.width() )
+				for( var yn:Number = 0 ; yn <= ydivisions; yn++)
 				{
-					_log.text += " ERROR in stitchmesh :   indiividual map size does not equal final stitched map size. my bad" ;
-				}
-				
-				
-				// 
-				//  get overlapping regions
-				//
-				//
-				
-				// initialise new array to hold overlaps
-				//     
-				var overlaps:Array = new Array( bigProjMap.width() );
-				
-				for( var w:int = 0 ; w < scrWid; w++)
-				{
-					overlaps[ w] = new Array( scrHeight );
-					for( var h:int = 0 ; h < scrHeight; h++)
+					for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
 					{
-						overlaps[w][h] = new Array;
-					}
-				}
-				
-				//   populate new Array
-				//
-				for( var x:int = 0 ; x < bigProjMap.width(); x++)
-				{
-					for( var y:int = 0 ; y < bigProjMap.height(); y++)
-					{
-						var pp:Point = bigProjMap.getProjXY( x,y);
-						if( pp.x > 0 && pp.x < scrWid   &&   pp.y > 0 && pp.y < scrHeight)
+						var x:Number = 2 * ( xn / xdivisions ) - 1 ;
+						var y:Number = 2 * ( yn / ydivisions ) - 1;
+						var currProjectorIndex:int = Math.floor( xn * projMap_list.length / xdivisions);
+						if(currProjectorIndex >= projMap_list.length)
+							currProjectorIndex = projMap_list.length - 1 ;
+						var currProjector:ProjectorMap = projMap_list[ currProjectorIndex ];
+						// x and y positions in screen dimensions
+						var xm:int  = Math.floor( (xn/xdivisions) * scrWid ) ;
+						var ym:int = Math.floor( (yn/ydivisions) * scrHeight) ;
+						
+						if( ! currProjector)
+							_log.text += "  curr projector  null " + currProjectorIndex;
+						var u:Number = currProjector.getProjXY(xm,ym).x;
+						var v:Number = currProjector.getProjXY(xm,ym).y;
+						var i:Number = -1;
+						if( u >=0 && v >=0 )
 						{
-							overlaps[pp.x][ pp.y].push( new Point(x,y) );
+							i = blendOpacs.getOpacities(u,v)[ currProjectorIndex ];	
+							u =  u / scrWid ;// ??? todo: should this be u = u / camera_width;???
+							v =  v / scrHeight ;/// ??? This too ???
 						}
+						else
+						{
+							u = v = -1000;
+							i = -1 ;
+						}
+						//push an object on
+						nodes[yn][xn] = { x:x , y:y , u:u , v:v ,i:Number(i)}; 
 					}
 				}
 				
 				//
-				// MAKE DISPLACEMENT MAPS WITH OPACTITY
+				// convert nodes[][] to a properly formatted string
 				//
-				var d16:Displacement24 = new Displacement24();
-				d16.fromProjectorMap( bigProjMap );
+				for( var yn:Number = 0 ; yn <= ydivisions; yn++)
+				{
+					for( var xn:Number = 0; xn <= xdivisions ; xn ++  ) 
+					{
+						var tmpObj:Object = nodes[yn][xn];
+						//
+						//
+						//  handle the border issues 
+						//       make all borders translucent
+						//       
+						//    		
+						var i2:Number = Number(tmpObj.i);
+						
+						if( xn == 0 || yn == 0)
+							i2 = -1;
+						else if( xn == xdivisions || yn == ydivisions)
+							i2 = -1;
+						else if( nodes[yn][xn-1].i < 0 )
+							i2 = -1;
+						else if( nodes[yn][xn+1].i < 0 )
+							i2 = -1;
+						else if( nodes[yn-1][xn].i < 0 )
+							i2 = -1;
+						else if( nodes[yn+1][xn].i < 0 )
+							i2 = -1;
+						
+						
+						//
+						//  finally outputto the final string
+						//
+						result += tmpObj.x + " " + -1 * tmpObj.y + " " + ( tmpObj.u ).toString() + " " + (1- tmpObj.v ).toString() + " " + i2 + "\n";					
+					}
+				}
+				return result;
+			}
+			
+			*/
+			function meshWOpacity2()
+			{
+				var mpb:MultiProjMapBlend = new MultiProjMapBlend( projMap_list );
+				_mesh_img.source = new Bitmap( mpb.getImage() );
+			}
+			/*
+			function meshImgClick( e:MouseEvent):void
+			{
+				var x:Number = e.localX;
+				var y:Number = e.localY;
 				
-				
-				
-				
-				
+				if( blendOpacs && blendOpacs.ready )
+				{
+					_log.text += " { "+ x + " , " + y + " : " + blendOpacs.getOpacities(x,y) + " dist : " + blendOpacs.getDistances(x,y) + "} , " ; 
+				}
+				else
+				{
+					_log.text += "blend opacs not ready";
+				}
+			}
+			*/
+			public function goFullScreen( )
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIGhandler)
+				stage.displayState = "fullScreen"	
+			}
+			public function goBIGhandler( e:FullScreenEvent)
+			{
 				
 			}
 			
-			
-			
+			//
+			//this should help with some image scaling issues
+			//
+			/*
+			public function findDisplayRect():Rectangle
+			{
+				if( blendOpacs && blendOpacs.ready)
+				{
+					var bm:BitmapData = blendOpacs.getImage() ;
+					var rect:Rectangle = bm.getColorBoundsRect( 0x00ffffff, 0x00000000, false);
+					var sh:Shape = new Shape();
+					sh.graphics.beginFill(0xffffff00,0.7);
+					sh.graphics.lineStyle( 3, 0xffff0000, 1.0);
+					sh.graphics.drawRect( rect.x, rect.y, rect.width, rect.height);
+					sh.graphics.endFill();
+					bm.draw(sh);
+					_mesh_img.source = new Bitmap( bm);
+					_log.text += " active rect : " + rect.toString(); 
+					return rect;
+				}
+				else{
+					return null;
+				}
+			}
+			*/
 			
 			
 		]]>
@@ -574,6 +618,7 @@
 		<s:NavigatorContent label="select camera" width="100%" height="100%" contentBackgroundAlpha="0.0" backgroundAlpha="0.0">
 			<ns1:camDisplay x="10" y="0" width="654" height="521" id="_camDisp">
 			</ns1:camDisplay>
+			<s:Button x="428" y="414" label="FULL screen" fontSize="21" click="goFullScreen()"/>
 		</s:NavigatorContent>
 		<s:NavigatorContent label="callibration" width="100%" height="100%">
 			<mx:Image x="0" y="0" id="_imgCallib"/>
@@ -604,10 +649,12 @@
 			<s:Label x="109" y="9" text="also remember. this is still in early developement. so it won't look perfect, yet. ;D" width="455"/>
 		</s:NavigatorContent>
 		<s:NavigatorContent label="clean up meshes" width="100%" height="100%">
-			<mx:Image x="165" y="11" id="_mesh_img"/>
+			<mx:Image x="165" y="11" id="_mesh_img" />
 			<s:NumericStepper x="10" y="0" id="_mesh_num" minimum="0" maximum="10" change="mesh_num_change()"/>
 			<s:Button x="10" y="78" label="remove skinny triangles" click="removeSkinnyTriangles()"/>
 			<s:Button x="10" y="107" label="remove really long triangles" click="removeLongTriangles()"/>
+			<s:Button x="10" y="145" label="meshWOpacity2()" click="meshWOpacity2()"/>
+			
 		</s:NavigatorContent>
 		<s:NavigatorContent label="save displacement maps" width="100%" height="100%" backgroundAlpha="1.0">
 			<s:Button x="10" y="57" label="save X Displacement" click="imageSave('x') " />
@@ -615,6 +662,7 @@
 			<s:Label x="10" y="19" text="Save both of these images." fontSize="17" fontWeight="bold"/>
 			<s:Button x="10" y="167" label="save stitch meshes" click="stitchUVMeshes2()"/>
 			<s:Label x="10" y="124" text="AND / OR" fontSize="17" fontWeight="bold" width="140"/>
+			<s:Button x="10" y="203" label="save w/ opacity, TEST" click="meshWOpacity2();"/>
 		</s:NavigatorContent>
 	</mx:TabNavigator>
 	
