@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
-			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" backgroundColor="#000000">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
@@ -87,7 +87,7 @@
 				_img.x = _img.y = 0 ;
 				
 				if(bendyProjCam){
-					_img.content.width = bendyProjCam.mapX.width // _img.content.width ;
+					//_img.content.width = bendyProjCam.mapX.width // _img.content.width ;
 					_img.width = bendyProjCam.mapX.width;
 					
 				}
@@ -255,6 +255,15 @@
 
 			
 			
+			public function goFullScreen( )
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIGhandler)
+				stage.displayState = "fullScreen"	
+			}
+			public function goBIGhandler( e:FullScreenEvent)
+			{
+				
+			}
 		]]>
 	</fx:Script>
 	<mx:Image x="0" y="0" scaleX = "1" scaleY="1" id="_img" mouseDown="mouse_Down(event)" mouseUp="mouse_up(event) " mouseMove="mouse_move(event)" mouseWheel="mouse_wheel(event)"/>
@@ -287,6 +296,7 @@
 		
    </s:ArrayCollection>
 	</s:ComboBox>
+	<s:Button x="10" y="221" label="FULL screen" click="goFullScreen()"/>
 	
 </s:Application>
 

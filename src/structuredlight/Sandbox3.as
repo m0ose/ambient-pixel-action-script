@@ -129,7 +129,15 @@ package structuredlight
 		public var _DONE_EVENT:Event =  new Event(_DONE_EVENT_STRING, true)
 
 		
-		
+		public function destroy():void
+		{
+			for each(var b:BitmapData in frames_store)
+			{
+				b.dispose();
+			}
+			frames_store  = HLines = VLines = WFrames = BFrames = null;
+			mask = null;
+		}
 		
 		public function Sandbox3(stagetmp:Stage, camb:Camera = null, width:int = 0 , height:int = 0)
 		{

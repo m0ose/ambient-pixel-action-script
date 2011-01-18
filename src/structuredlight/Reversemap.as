@@ -3,7 +3,11 @@ package structuredlight
 	// reverses the map
 	// todo : change this to a binary tree rather than a 2d array.
 	//
-	//
+	// BUG:
+	//  Note : there is definatly an issue with line 68 & 69. The scale should not be needed. when it is 1 it causes mis-alignment of multiple projectors. 
+	// however it doesn't mess up the quartz composer with multiple projectors , wierd.
+	//  it may be making an allready small dis-alignment a little bigger, but i do not know. 
+	
 	import flash.display.BitmapData;
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
@@ -42,10 +46,8 @@ package structuredlight
 			// FIND NEW DIMENSIONS
 			if( !new_width || ! new_height )
 			{
-			new_width = cam_map._screen_width;
-			new_height = cam_map._screen_height;
-			
-			
+				new_width = cam_map._screen_width;
+				new_height = cam_map._screen_height;
 			}
 			
 
@@ -66,8 +68,8 @@ package structuredlight
 			//
 			//var maximum:int=0;
 			
-			var screenScaleX:Number = 1;//cam_map._screen_width / cam_map._cam_width;/// cam_map.width();
-			var screenScaleY:Number = 1;//cam_map._screen_height / cam_map._cam_height; /// cam_map.height() ;
+			var screenScaleX:Number = 1.0//cam_map._screen_width / cam_map._cam_width;/// cam_map.width();
+			var screenScaleY:Number = 1.0//cam_map._screen_height / cam_map._cam_height; /// cam_map.height() ;
 				
 				
 			for(var  x:int=0; x < cam_map.width(); x++)
@@ -79,7 +81,6 @@ package structuredlight
 					if( p.x >= 0 && p.y >= 0 && p.x < rev_map.length && p.y < rev_map[0].length)
 					{
 						rev_map[p.x][p.y].push( new Point(x * screenScaleX , y * screenScaleY) );
-
 					}
 				}
 			}

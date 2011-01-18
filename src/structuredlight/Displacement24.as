@@ -61,7 +61,7 @@ package structuredlight
 		public var READY_EVENT:String = "D24 READY";
 		//load the pixel bender kernel
 		//[Embed(source="displ24goodzoom.pbj", mimeType="application/octet-stream")]
-		[Embed(source="displ24test.pbj" , mimeType="application/octet-stream")]
+		[Embed(source="displGood_zoom_alpha.pbj" , mimeType="application/octet-stream")]
 		protected var displacer:Class;
 		
 		

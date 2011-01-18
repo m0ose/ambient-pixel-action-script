@@ -56,6 +56,10 @@ package structuredlight
 		public var _screen_width:int = 640;
 		public var _screen_height:int = 480;
 		
+		public function destroy():void
+		{
+		//todo: put some destroyers here	
+		}
 		public function dumpParameters():String
 		{
 			var s1:String = new String();
@@ -70,6 +74,7 @@ package structuredlight
 			
 		}
 		
+
 		public function CameraProjecterMap():void
 		{			
 		}

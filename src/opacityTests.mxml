@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" viewSourceURL="srcview/index.html" applicationComplete="initStage()" backgroundColor="#000000">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import ImageStuff.loadImagesXML;
+			
+			import mx.collections.ArrayList;
+			import mx.events.ResizeEvent;
+			
+			import org.osmf.layout.AbsoluteLayoutFacet;
+			
+			import structuredlight.BourkeMesh;
+			
+			public var verbose:Boolean = true;
+			public var superVerbose:Boolean = true;
+			public var pbm:BourkeMesh;
+			public var pbmNew:BourkeMesh;
+			
+			
+			public function initStage():void
+			{
+				// load default warp
+				//pbm = new BourkeMesh();
+		
+			}
+			public function importMesh():void
+			{
+				pbm = new BourkeMesh();
+				pbm._inverted = false;
+				
+				pbm.addEventListener( pbm._completeLoadingEvent, importComplete);
+				pbm.importMeshFile();
+				
+			}
+			
+			
+			public function importComplete( e:Event):void
+			{
+				e.target.removeEventListener( e.type, arguments.callee );
+				
+				_img.source = new Bitmap( e.target.displayMesh() );
+				if(verbose)
+					_log.text = " map loaded    width" + e.target.width + "  height " + e.target.height; 	
+			}
+			
+			function changeOpacity( eq:Function)
+			{
+				if( !pbm){
+					_log.text += " No mesh loaded yet";
+					return;
+				}
+				for( var x:int=0; x < pbm.mesh2dArray.length; x++)
+				{
+					for( var y:int=0; y < pbm.mesh2dArray[0].length ;y++)
+					{
+						var o:Object = pbm.mesh2dArray[x][y];
+						o.i = eq( o.i );
+					}
+				}
+				writeMesh();
+			}
+			
+			function writeMesh()
+			{
+				var meshString:String = "2\n";
+				meshString += pbm.width + " " + pbm.height + "\n";
+				for( var y:int=0; y < pbm.mesh2dArray[0].length ;y++)
+				{	
+					for( var x:int=0; x < pbm.mesh2dArray.length; x++)
+					{
+					
+						var o:Object = pbm.mesh2dArray[x][y];
+						meshString += o.x + " " + o.y + " " + o.u + " " + o.v + " " + o.i + "\n" ;
+					}
+				}
+				_log.text += meshString;
+				pbm.meshString = meshString;
+				pbm.saveQuartzMesh();
+			}
+			function relationZero(x:Number){
+				return 1234.0;
+			}
+			//takes a value x from 0 to 1 and returns a new value from 0 to 1
+			function relationEQcos( x:Number):Number 	
+			{
+				if( x < 0 )
+					return x;
+				return (Math.cos( Math.PI*(x+1) ) + 1) / 2;	
+			}
+			function relationEQsin( x:Number):Number 	
+			{
+				if( x < 0 )
+					return x;
+				return (Math.sin( x * Math.PI/2));
+			}
+			function relationEQround( x:Number):Number 	
+			{
+				if( x < 0 )
+					return x;
+				return Math.pow((Math.sin( x * Math.PI/2)) , 0.66);
+			}
+			function relationEQpow( x:Number):Number
+			{
+				if( x<0)
+					return x;
+				return Math.pow( x,3);
+			}
+			function relationEQSquare( x:Number)
+			{
+				if( x < 0)
+					return x;
+				if(x >= 1)
+					return 1;
+				//else
+				return 0.7;
+				
+			}
+			function relationEQSquare2( x:Number)
+			{
+				if( x < 0)
+					return x;
+				if( x <= 0.5 ) 
+					return 0
+				//else
+				return 1;
+				
+			}
+			function relationEQrnd(x:Number)
+			{
+				return(Math.random());
+			}
+			
+			function relationEQplus3(x:Number)
+			{
+			
+				if(x < 0)
+					return 0;
+				if( x + 0.3 > 1)
+					return 1;
+				return x + 0.3;
+			}
+			
+			function relationEQmult(x:Number)
+			{
+				
+				if(x < 0)
+					return 0;
+				if( x * 2 > 1)
+					return 1;
+				return x *2;
+			}
+			// GUI
+			
+			function formHandler()
+			{
+				
+				_log.text = _EQType.selectedItem.label +" " + _EQType.selectedIndex ;
+				var label:String = _EQType.selectedItem.label ;
+				if( label == "null")
+					changeOpacity( relationZero);
+				else if( label == "nothing"){
+					if(pbm)
+						pbm.saveQuartzMesh();
+				}
+				else if( label == "square wave")
+					changeOpacity( relationEQSquare);
+				else if( label == "cosine")
+					changeOpacity( relationEQcos);
+				else if( label == "sine")
+					changeOpacity( relationEQsin);
+				else if( label == "x^3")
+					changeOpacity( relationEQpow);
+				else if( label == "square no opacity")
+					changeOpacity( relationEQSquare2);
+				else if( label == "random")
+					changeOpacity( relationEQrnd);
+				else if( label == "x + 0.3")
+					changeOpacity( relationEQplus3);
+				else if( label == "x * 2")
+					changeOpacity( relationEQmult);
+				else if( label == "round")
+					changeOpacity( relationEQround);
+				else
+					_log.text += " \n WOOPS";
+					
+			}
+			
+		
+			
+
+		]]>
+	</fx:Script>
+	
+	<mx:Image x="300" y="10" id="_img" />
+	<s:TextArea id="_log" width="397" x="10" y="167" height="289" color="#FFFFFF" contentBackgroundColor="#000000" contentBackgroundAlpha="0.6" text="_log window"/>
+	<s:Button x="12" y="67" label="import mesh" click="importMesh()"/>
+	<s:Button x="190" y="102" label="change opactity" click="formHandler()" />
+	<s:ComboBox x="22" y="100" id="_EQType" selectedIndex="0">
+		<mx:ArrayCollection>
+			<fx:Object label="null"/>
+			<fx:Object label="square wave" />
+			<fx:Object label="cosine" />
+			<fx:Object label="sine" />
+			<fx:Object label="x^3" />
+			<fx:Object label="square no opacity"/>
+			<fx:Object label="nothing"/>
+			<fx:Object label="random"/>
+			<fx:Object label="x + 0.3"/>
+			<fx:Object label="x * 2"/>
+			<fx:Object label="round"/>
+			
+		</mx:ArrayCollection>
+	</s:ComboBox>
+	
+</s:Application>
+
+

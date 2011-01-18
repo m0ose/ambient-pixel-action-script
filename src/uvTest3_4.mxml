@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" viewSourceURL="srcview/index.html" applicationComplete="initStage()" backgroundColor="#000000">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			//
+			//   Display an image using Paul Bourke's Warp-Mesh  http://local.wasp.uwa.edu.au/~pbourke/dataformats/meshwarp/
+			//
+			//
+			// keys:
+			//  	move:			up, down, left, right
+			//		rotate:			a, s
+			//		change image:   c
+			//
+			//
+			//
+			//
+			
+			import ImageStuff.loadImagesXML;
+			
+			import mx.events.ResizeEvent;
+			
+			import org.osmf.layout.AbsoluteLayoutFacet;
+			
+			import structuredlight.BourkeMesh;
+			
+			public var verbose:Boolean = true;
+			public var superVerbose:Boolean = true;
+			public var pbm:BourkeMesh;
+			//
+			// uv mapping variables 
+			public var bmIn:Bitmap;
+			public var imageList:loadImagesXML = new loadImagesXML("images/images.xml");
+			public var imageIndex:int = -1 ;
+			public var bmBig:BitmapData;//displayed image
+			
+			public var xyVertices:Vector.<Number> = new Vector.<Number>;
+			public var uvVertices:Vector.<Number> = new Vector.<Number>;
+			public var indices:Vector.<int> = new Vector.<int>;
+			
+			public var xyVerticesOriginal:Vector.<Number> = new Vector.<Number>;
+			public var uvVerticesOriginal:Vector.<Number> = new Vector.<Number>;
+			
+			public var currMatrix:Matrix = new Matrix(1,0,0,1,0,0);
+			
+			
+			public function initStage():void
+			{
+				stage.addEventListener( KeyboardEvent.KEY_DOWN, watchkeys);
+				stage.addEventListener(Event.RESIZE,stageResize);
+				// load default warp
+				pbm = new BourkeMesh();
+				pbm.addEventListener( pbm._completeLoadingEvent, importComplete);
+				pbm.importDefault();
+			}
+			public function importMesh():void
+			{
+				pbm = new BourkeMesh();
+		
+				pbm.addEventListener( pbm._completeLoadingEvent, importComplete);
+				pbm.importMeshFile();
+			}
+			
+			
+			public function importComplete( e:Event):void
+			{
+				e.target.removeEventListener( e.type, arguments.callee );
+
+				_img.source = new Bitmap( e.target.displayMesh() );
+				if(verbose)
+					_log.text = " map loaded    width" + e.target.width + "  height " + e.target.height; 
+				
+		
+				bmBig = null;
+				initTriangles();
+				changeImage();
+				
+			}
+			
+			//
+			//
+			///      uv mesh triangles
+			///
+			/////
+			/////////
+			/////////
+			/////
+			///
+			///
+			//
+			//
+
+			public function changeImage( bmp:Bitmap = null ):Bitmap
+			{
+				currMatrix = new Matrix(1,0,0,1,0,0);
+
+				imageIndex = (imageIndex + 1)%imageList.images.length;
+				
+				if( bmp)
+				{
+					bmIn = bmp;
+				}
+				else
+				{
+					bmIn  = imageList.images[ imageIndex ] ; 
+				}
+			
+				redrawImage( bmIn.bitmapData);
+				
+				if(verbose)
+					_log.text += " image changed to :" + imageList.image_names[ imageIndex];
+				
+				return bmIn;
+			}
+			
+			public function initTriangles():void
+			{	
+				if(!pbm){
+					return ;
+				}
+				// init variables 
+				indices = new Vector.<int>;
+				xyVertices = new Vector.<Number>;
+				uvVertices = new Vector.<Number>;
+				xyVerticesOriginal = new Vector.<Number>;
+				uvVerticesOriginal = new Vector.<Number>;
+				
+				var x:Number=0;
+				var y:Number=0;
+				
+				for each(var i:int in pbm.indices)
+				{
+					indices.push( int(i));
+				}
+				for ( var j:int = 0 ; j < pbm.xyVertices.length; j = j + 2)
+				{
+					x = pbm.xyVertices[j];
+					y = pbm.xyVertices[j+1];
+					xyVertices.push( ( x + 1 ) * stage.width / 2);
+					xyVertices.push( ( y + 1 ) * stage.height / 2);
+					xyVerticesOriginal.push( ( x + 1 ) * stage.width / 2);
+					xyVerticesOriginal.push( ( y + 1 ) * stage.height / 2);
+				}
+				for each( var u:Number in pbm.uvVertices)
+				{
+					uvVertices.push( Number(u) );
+					uvVerticesOriginal.push(Number(u));
+				}
+			}//...drawTriangles
+			
+			
+			public function redrawImage( bm2:BitmapData ):void
+			{
+
+				if( !bmBig || stage.width != bmBig.width || stage.height != bmBig.height )
+				{
+					bmBig = new BitmapData( stage.width, stage.height,false,0);
+					_img.source =  new Bitmap( bmBig) ;
+				}
+				//
+				// do the Heavy lifting
+				if( !xyVertices || !indices || !uvVertices)
+				{
+					return;
+				}
+				var outShape:Shape = new Shape();
+				outShape.graphics.beginBitmapFill( bm2);
+				outShape.graphics.drawTriangles( xyVertices, indices, uvVertices);
+				outShape.graphics.endFill();
+				bmBig.draw( outShape );
+				
+				
+				//
+				// Draw the triangles
+				//
+				if( _showUVTriangles.selected || _showXYTriangles.selected)
+				{
+					var uvShape:Shape = new Shape();
+					uvShape.graphics.lineStyle(1,0xff00ff00);
+					var xyShape:Shape = new Shape();
+					xyShape.graphics.lineStyle(1,0xff0000ff);
+					for( var i:int = 0 ; i < indices.length; i = i + 3)
+					{
+						var index1:int = indices[i];
+						var index2:int = indices[i+1];
+						var index3:int = indices[i+2];
+						if( _showXYTriangles.selected )
+						{
+							var p1x:Number = xyVertices[2*index1];
+							var p1y:Number = xyVertices[2*index1 + 1];
+							var p2x:Number = xyVertices[2*index2];
+							var p2y:Number = xyVertices[2*index2 + 1];
+							var p3x:Number = xyVertices[2*index3];
+							var p3y:Number = xyVertices[2*index3 + 1];
+							
+							xyShape.graphics.moveTo( p1x, p1y);
+							xyShape.graphics.lineTo( p2x, p2y);
+							xyShape.graphics.lineTo( p3x, p3y);
+							xyShape.graphics.lineTo( p1x, p1y);
+						}
+						if( _showUVTriangles.selected )
+						{
+							var u1x:Number = uvVertices[2*index1] * stage.width;
+							var u1y:Number = uvVertices[2*index1 + 1] * stage.height;
+							var u2x:Number = uvVertices[2*index2] * stage.width;
+							var u2y:Number = uvVertices[2*index2 + 1] * stage.height;
+							var u3x:Number = uvVertices[2*index3] * stage.width;
+							var u3y:Number = uvVertices[2*index3 + 1] * stage.height;
+							
+							uvShape.graphics.moveTo( u1x, u1y);
+							uvShape.graphics.lineTo( u2x, u2y);
+							uvShape.graphics.lineTo( u3x, u3y);
+							uvShape.graphics.lineTo( u1x, u1y);
+						}	
+						
+					}	
+					bmBig.draw( xyShape);
+					bmBig.draw( uvShape);
+				}
+				
+				
+			}
+			
+			
+			
+			public function matrixTransform( matrix:Matrix ):void
+			{	
+				var ucoord:Number ;
+				var vcoord:Number ;
+				for( var n:int = 0 ; n < uvVertices.length; n = n + 2 )
+				{	
+					ucoord = Number(uvVertices[n]);	
+					vcoord = Number(uvVertices[ n+1]);
+					
+					uvVertices[n] = matrix.a * ucoord + matrix.c * ucoord + matrix.tx;//x
+					uvVertices[n+1] = matrix.b * vcoord + matrix.d * vcoord + matrix.ty;//y
+				}
+			}
+			public function matrixTransformOfOriginal( matrix:Matrix ):void
+			{	
+				var ycoord:Number ;
+				var xcoord:Number ;
+				for( var n:int = 0 ; n < uvVerticesOriginal.length; n = n + 2 )
+				{	
+					xcoord = uvVerticesOriginal[n];	
+					ycoord = uvVerticesOriginal[ n+1];
+					
+					uvVertices[n] = (matrix.a * xcoord) + (matrix.c * ycoord) + matrix.tx;//x
+					uvVertices[n+1] = (matrix.b * xcoord) + (matrix.d * ycoord) + matrix.ty;//y
+				}
+			}
+			
+
+			//
+			// GUI STUFF
+			//
+			//
+			public function watchkeys( e:KeyboardEvent ):void
+			{
+				if(superVerbose)
+					_log.text += "\n key pressed " + e.type + " , " + e.keyCode ;
+				if(e.keyCode == Keyboard.LEFT){
+					currMatrix.tx -= 0.1;
+				}
+				else if(e.keyCode == Keyboard.RIGHT )
+				{
+					currMatrix.tx += 0.1;
+				}
+				else if(e.keyCode == Keyboard.UP )
+				{
+					currMatrix.ty -= 0.04;
+					
+				}
+				else if(e.keyCode == Keyboard.DOWN )
+				{
+					currMatrix.ty += 0.04;
+				}
+				else if(e.keyCode == 187)
+				{
+					//zoom in
+					currMatrix.scale( 0.9 , 0.9);
+				}
+				else if(e.keyCode == 189)
+				{
+					//zoom out
+					currMatrix.scale( 1.1, 1.1);
+				}
+				else if( e.keyCode == 65)//a rotate
+				{
+					currMatrix.rotate( 0.157);
+				}
+				else if( e.keyCode == 83)//s rotate
+				{
+					currMatrix.rotate( -0.157);
+				}
+				else if( e.keyCode == 67 )//changeImage
+				{
+					changeImage();
+				}
+				
+				if(pbm)
+				{
+					matrixTransformOfOriginal( currMatrix );
+					//_log.text += "cents " + centx + "," + centy;
+					redrawImage( bmIn.bitmapData );
+				}
+			}
+			
+			
+			public function goFullScreen( ):void
+			{
+				stage.addEventListener(FullScreenEvent.FULL_SCREEN, goBIGhandler)
+				stage.displayState = "fullScreen"	;
+				if(superVerbose)
+					_log.text += " \n going Full Screen ";
+			}
+			public function goBIGhandler( e:FullScreenEvent):void
+			{
+				stageResize();
+			}
+			public function stageResize(e:Event = null):void
+			{
+				if(superVerbose)
+					_log.text += "stage resized" + stage.width + "," +stage.height;
+				if(stage && bmIn)
+				{
+					//bmBig = new BitmapData( stage.width, stage.height,false,0);
+					initTriangles();
+					redrawImage(bmIn.bitmapData);
+				}
+			}
+			
+		
+			public function hidePanel():void
+			{
+				//_panel.width = 10;
+				_panel.alpha = 0.0;
+				//_panel.visible = false;
+				
+			}
+			public function showPanel():void
+			{
+				//_panel.width = 400;
+				_panel.alpha = 1.0;
+				//_panel.visible = true;
+
+			}
+			public function togglePanelOver( e:MouseEvent):void
+			{
+				if(_panel.alpha < 1)
+					showPanel();
+			}
+			public function togglePanelOut( e:MouseEvent):void
+			{
+				if(_panel.alpha > 0  ){
+					if( e.localX > _panel.width || e.stageX <= 0 )
+					{
+						_panel.alpha = 0.3;
+						//hidePanel();
+						setTimeout( hidePanel, 700);
+					}
+				}
+			}
+			
+			//
+			////  Open image functions
+			////
+			//
+			public var fr:FileReference
+			public function openImage():void
+			{
+				_log.text += " loading image from disk";
+				var ff:FileFilter = new FileFilter("Images","*.jpg; *.png; *.gif");
+				fr = new FileReference();
+				fr.browse( [ff]);
+				fr.addEventListener(Event.SELECT, selectHandler);
+				fr.addEventListener(Event.COMPLETE, completeHandler);
+				//fr.load();
+			}
+			private function selectHandler(e:Event):void
+			{
+				e.target.removeEventListener( e.type, arguments.callee );
+				_log.text += " image selected";
+				
+				fr.load();
+			}
+			private function completeHandler(e:Event):void
+			{
+				e.target.removeEventListener( e.type, arguments.callee );
+				_log.text += " image loading complete";
+	
+				
+				var ldr:Loader = new Loader();
+				ldr.contentLoaderInfo.addEventListener( Event.COMPLETE, loaderComplete);
+				ldr.loadBytes( fr.data);
+				_log.text += "display_image"
+				
+			}
+			private function loaderComplete(e:Event):void
+			{
+				_log.text += " \n loader info complete";
+				e.target.removeEventListener( e.type, arguments.callee );
+				
+				var ldr_info:LoaderInfo = (e.target as LoaderInfo);
+				var bmd2:BitmapData = new BitmapData( ldr_info.content.width, ldr_info.content.height);
+				bmd2.draw( ldr_info.content);
+				
+				imageList.images.push( new Bitmap(bmd2) );
+				imageList.image_names.push(fr.name);
+				changeImage( new Bitmap(bmd2));
+			}
+		]]>
+	</fx:Script>
+	
+	<mx:Image x="0" y="0" id="_img" />
+	<s:BorderContainer x="0" y="0" width="404" height="100%" backgroundColor="#FFFFFF" backgroundAlpha="0.11" id="_panel" mouseOver="togglePanelOver(event)" mouseOut="togglePanelOut(event)">
+		<s:Button x="7" y="47" label="load mesh .data" click="importMesh()"/>
+		<s:TextArea x="18" y="388" width="327" height="304" id="_log" contentBackgroundAlpha="1.0" color="#FFFFFF" contentBackgroundColor="#000000"/>
+		<s:Button x="11" y="157" label="change Image" click="changeImage()"/>
+		<s:Button x="310" y="1" label="FULL screen" click="goFullScreen()"/>
+		<s:CheckBox x="48" y="78" label="invert" id="_invertBox" width="55" selected="true" color="#FFFFFF" visible="false"/>
+		<s:CheckBox x="45" y="104" label="show uv Triangles" id="_showUVTriangles" color="#FFFFFF"/>
+		<s:BorderContainer x="28" y="238" width="317" height="142" backgroundColor="#000000" contentBackgroundColor="#000000" >
+			<s:Label x="10" y="20" text="KEYS:" color="#FFFFFF"/>
+			<s:Label x="30" y="40" text="Move :                     up, down, left, right" color="#FFFFFF"/>
+			<s:Label x="30" y="60" text="Zoom :                    + , -" color="#FFFFFF"/>
+			<s:Label x="30" y="80" text="Change Image :      c" color="#FFFFFF"/>
+			<s:Label x="30" y="100" text="Zoom :                     a, s" color="#FFFFFF"/>
+		</s:BorderContainer>
+		<s:CheckBox x="44" y="127" id="_showXYTriangles" label="show xy triangles" color="#FFFFFF"/>
+		<s:Button x="10" y="184" label="open Image" click="openImage()"/>
+	</s:BorderContainer>
+
+	
+</s:Application>
+

@@ -50,7 +50,7 @@ package MultiProjector
 			done = true;
 			_log += "\n done . ready to save";
 
-			save();
+			//save();
 		}
 		public function save():void
 		{

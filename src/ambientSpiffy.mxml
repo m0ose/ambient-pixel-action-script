@@ -2,7 +2,7 @@
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
 			   xmlns:s="library://ns.adobe.com/flex/spark" 
 			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600"
-			   applicationComplete="watchKeyboard(); loadImages()" xmlns:ns1="*">
+			   applicationComplete="watchKeyboard(); loadImages()" xmlns:ns1="*" viewSourceURL="srcview/index.html">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
@@ -36,7 +36,7 @@
 			//  
 			//
 			
-			//  Image. TODO. this should be replaced with some sort of dynamic image loading
+			// TODO : a better way to change images
 			//
 			//[Embed(source="images/chacoPanarama3072Xsomething.jpg")]
 			//private var chacoPanarama:Class;

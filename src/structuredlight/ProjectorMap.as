@@ -77,7 +77,7 @@ package structuredlight
 		//
 		public function cleanUp():void
 		{
-			
+			rev_map = null;
 		}
 
 		
